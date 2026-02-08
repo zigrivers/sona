@@ -32,7 +32,7 @@ Review `tasks/lessons.md` for relevant patterns before starting.
 1. **Red**: Write a failing test that defines the expected behavior
 2. **Green**: Write the minimum code to make it pass
 3. **Refactor**: Clean up while tests stay green
-4. Commit with task ID: `feat(scope): description (bd-<id>)`
+4. Commit with task ID: `[BD-<short-id>] feat(scope): description` (where `<short-id>` is the task ID without the project prefix, e.g., `sona-ggg` becomes `ggg`)
 
 For non-trivial changes, pause and ask: *"Is there a more elegant way?"*
 Skip this for simple, obvious fixes.
@@ -101,7 +101,7 @@ When given a bug report or enhancement request:
 2. Claim it: `bd update <id> --claim`
 3. Create feature branch: `git checkout -b bd-<id>/<short-desc>`
 4. Implement with TDD (failing test first)
-5. Commit with task ID: `git commit -m "[BD-<id>] fix: description"`
+5. Commit with task ID: `git commit -m "[BD-<short-id>] fix: description"` (strip project prefix from ID, e.g., `sona-ggg` → `ggg`)
 6. PR with squash auto-merge
 7. Close task: `bd close <id>`
 
