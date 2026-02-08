@@ -29,44 +29,37 @@ jobs:
           fi
           echo "PR title format OK: $PR_TITLE"
 
-  placeholder:
-    name: placeholder
+  backend-checks:
+    name: backend-checks
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
-      - name: Pass
-        run: echo "Placeholder check — replace with real checks when code exists"
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --all-extras
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pyright
+      - run: uv run pytest
 
-  # --- Uncomment when backend code exists ---
-  # backend-checks:
-  #   name: backend-checks
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: backend
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: astral-sh/setup-uv@v4
-  #     - run: uv sync
-  #     - run: uv run ruff check .
-  #     - run: uv run ruff format --check .
-  #     - run: uv run pyright
-  #     - run: uv run pytest
-
-  # --- Uncomment when frontend code exists ---
-  # frontend-checks:
-  #   name: frontend-checks
-  #   runs-on: ubuntu-latest
-  #   defaults:
-  #     run:
-  #       working-directory: frontend
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: pnpm/action-setup@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version-file: frontend/.node-version
-  #         cache: pnpm
-  #         cache-dependency-path: frontend/pnpm-lock.yaml
-  #     - run: pnpm install --frozen-lockfile
-  #     - run: pnpm lint
-  #     - run: pnpm test
+  frontend-checks:
+    name: frontend-checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.node-version
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test

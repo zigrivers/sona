@@ -193,6 +193,21 @@ Key rules when in a worktree:
 
 Before creating a new file, check `docs/project-structure.md` for the correct location.
 
+## Dev Environment
+
+| Command | Purpose |
+|---------|---------|
+| `make install` | Install all backend + frontend dependencies |
+| `make dev-backend` | Start FastAPI on http://localhost:8000 |
+| `make dev-frontend` | Start Vite on http://localhost:5173 |
+| `make test` | Run all backend + frontend tests |
+| `make lint` | Run all linters and type checkers |
+| `make format` | Auto-fix formatting (ruff + prettier) |
+
+- Backend health check: `GET http://localhost:8000/api/health`
+- Frontend proxies `/api` to backend — use http://localhost:5173/api/health to test proxy
+- See `docs/dev-setup.md` for full setup guide and troubleshooting
+
 ## Self-Improvement
 
 - After ANY correction from the user: update `tasks/lessons.md` with the pattern
