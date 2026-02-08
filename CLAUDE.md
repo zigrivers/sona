@@ -102,7 +102,7 @@ When given a bug report or enhancement request:
 3. Create feature branch: `git checkout -b bd-<id>/<short-desc>`
 4. Implement with TDD (failing test first)
 5. Commit with task ID: `git commit -m "[BD-<short-id>] fix: description"` (strip project prefix from ID, e.g., `sona-ggg` → `ggg`)
-6. PR with squash auto-merge
+6. PR with squash merge — set the PR title to match commit convention so the squash commit message is correct: `[BD-<short-id>] type(scope): description`. Use `gh pr merge --squash --subject "[BD-<short-id>] type(scope): description"` to enforce this.
 7. Close task: `bd close <id>`
 
 **Every commit requires a Beads task ID.** This keeps Beads as the single source of truth for all changes.
