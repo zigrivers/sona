@@ -132,6 +132,7 @@ Single-user local app — no auth needed per PRD.
 | pytest | 8.0+ | Test framework |
 | pytest-asyncio | 0.24+ | Async test support |
 | pytest-cov | 6.0+ | Coverage reporting |
+| pytest-httpx | 0.35+ | Mock httpx HTTP calls in tests |
 | pre-commit | 4.0+ | Git hook framework |
 
 ### Frontend
@@ -145,7 +146,10 @@ Single-user local app — no auth needed per PRD.
 | Vitest | 3.0+ | Test framework |
 | @testing-library/react | 16.0+ | Component testing |
 | @testing-library/user-event | 14.5+ | User interaction simulation |
+| @testing-library/jest-dom | 6.6+ | Extended DOM matchers for Vitest |
 | MSW | 2.7+ | API mocking for tests |
+| @playwright/test | 1.50+ | E2E testing for critical user flows |
+| jsdom | 26.0+ | Browser environment for Vitest |
 
 ---
 
@@ -169,12 +173,13 @@ sona/
 │   └── pyproject.toml
 ├── frontend/               # React + Vite
 │   ├── src/
-│   │   ├── components/
+│   │   ├── components/     # Tests co-located: Component.test.tsx
 │   │   ├── pages/
 │   │   ├── hooks/
 │   │   ├── lib/
-│   │   └── types/
-│   ├── tests/
+│   │   ├── types/
+│   │   └── test/           # Shared test utilities (render, MSW, factories)
+│   ├── e2e/                # Playwright E2E tests
 │   ├── package.json
 │   └── vite.config.ts
 ├── data/                   # SQLite DB + avatars (gitignored)
@@ -245,6 +250,7 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.24",
     "pytest-cov>=6.0",
+    "pytest-httpx>=0.35",
     "ruff>=0.9",
     "pyright>=1.1",
     "pre-commit>=4.0",
@@ -296,7 +302,10 @@ dev = [
     "vitest": "^3.0",
     "@testing-library/react": "^16.0",
     "@testing-library/user-event": "^14.5",
+    "@testing-library/jest-dom": "^6.6",
     "msw": "^2.7",
+    "@playwright/test": "^1.50",
+    "jsdom": "^26.0",
 
     // Linting & Formatting
     "eslint": "^9.0",
