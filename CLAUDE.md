@@ -45,7 +45,7 @@ Skip this for simple, obvious fixes.
 ### 5. Verification Before Done
 - Run all tests. Check logs. Diff behavior against main when relevant.
 - Ask: *"Would a staff engineer approve this?"*
-- Only then: `bd update <id> --status completed`
+- Only then: `bd close <id>`
 
 ### 6. Continue to Next Task
 After completing a task:
@@ -58,7 +58,7 @@ bd ready                    # Check for more unblocked tasks
 
 ### 7. Session End (MANDATORY)
 ```bash
-bd update <id> --status completed   # or in_progress if not done
+bd close <id>   # or in_progress if not done
 bd sync
 git pull --rebase && git push
 git status                          # Must say "up to date"
@@ -103,7 +103,7 @@ When given a bug report or enhancement request:
 4. Implement with TDD (failing test first)
 5. Commit with task ID: `git commit -m "[BD-<id>] fix: description"`
 6. PR with squash auto-merge
-7. Close task: `bd update <id> --status completed`
+7. Close task: `bd close <id>`
 
 **Every commit requires a Beads task ID.** This keeps Beads as the single source of truth for all changes.
 
