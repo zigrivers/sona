@@ -100,10 +100,14 @@ sona/
 │   │   │   └── ...
 │   │   ├── stores/              # Zustand stores (client-only state)
 │   │   │   └── ui-store.ts
+│   │   ├── test/                # Shared test utilities
+│   │   │   ├── setup.ts         # Vitest setup (jsdom, jest-dom matchers)
+│   │   │   ├── render.tsx       # Custom render (QueryClient + Router)
+│   │   │   ├── handlers.ts      # MSW request handlers
+│   │   │   └── factories.ts     # Test data factories
 │   │   ├── App.tsx
 │   │   └── main.tsx
-│   ├── tests/
-│   │   ├── setup.ts             # Vitest setup, MSW handlers
+│   ├── e2e/                     # Playwright E2E tests
 │   │   └── ...
 │   ├── index.html
 │   ├── vite.config.ts
@@ -118,6 +122,7 @@ sona/
 │   ├── plan.md
 │   ├── tech-stack.md
 │   ├── coding-standards.md      # This file
+│   ├── tdd-standards.md
 │   └── git-workflow.md
 ├── tasks/
 │   └── lessons.md
