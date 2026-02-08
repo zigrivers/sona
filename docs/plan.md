@@ -879,7 +879,7 @@ MethodologySettings (1) ──── (*) MethodologyVersion
 ### Security
 - API keys stored in `.env` file, never exposed to the browser
 - No authentication needed (single-user local app)
-- All LLM API calls are server-side (Next.js API routes)
+- All LLM API calls are server-side (FastAPI backend)
 - No data leaves the machine except LLM API calls (which send writing samples and prompts to the selected provider)
 - User should be aware: writing samples and generated content are sent to third-party LLM providers
 
@@ -992,31 +992,37 @@ Since this is a personal tool without analytics infrastructure, success is measu
 
 ## Technical Architecture Summary
 
+> Full technology details, version pins, and rationale: see [`docs/tech-stack.md`](tech-stack.md)
+
 ### Stack
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 14+ (App Router) |
-| Styling | Tailwind CSS + shadcn/ui |
-| Database | SQLite via better-sqlite3 + Drizzle ORM |
-| AI | Vercel AI SDK with OpenAI, Anthropic, Google providers |
-| File parsing | mammoth (.docx), pdf-parse (.pdf) |
-| URL scraping | @mozilla/readability + jsdom |
-| Testing | Vitest + React Testing Library |
-| Charts | Recharts (via shadcn/ui) |
-| Data tables | @tanstack/react-table |
+| Backend | Python FastAPI 0.115+ (Uvicorn ASGI) |
+| Frontend | React 19+ SPA (Vite 6+, TypeScript 5.7+) |
+| Styling | Tailwind CSS v4 + shadcn/ui |
+| Database | SQLite via SQLAlchemy 2.0+ (async) + Alembic |
+| AI | Native SDKs: openai, anthropic, google-generativeai + custom LLMProvider abstraction |
+| File parsing | python-docx (.docx), pymupdf + pymupdf4llm (.pdf) |
+| URL scraping | httpx + beautifulsoup4 (lxml parser) |
+| Backend testing | pytest + pytest-asyncio |
+| Frontend testing | Vitest + React Testing Library + MSW |
+| Charts | Recharts |
+| Data tables | @tanstack/react-table + @tanstack/react-virtual |
+| State management | TanStack Query (server state) + Zustand (client state) |
+| Forms | React Hook Form + Zod |
 | PDF export | jspdf |
 | IDs | nanoid |
 
-### Page Structure
+### Page Structure (React Router SPA)
 ```
 /                        Dashboard (redirects to /clones)
 /clones                  Voice clone list (with demo clones)
 /clones/new              Create new clone
-/clones/[id]             Clone detail (samples, DNA, confidence, quick generate)
-/clones/compare?a=&b=   Clone comparison view (I8)
+/clones/:id              Clone detail (samples, DNA, confidence, quick generate)
+/clones/compare?a=&b=    Clone comparison view (I8)
 /clones/merge            Voice merge tool
 /create                  Content Generator
-/create/[id]             Edit/regenerate existing content
+/create/:id              Edit/regenerate existing content
 /library                 Content library
 /settings                Methodology settings
 /settings/providers      LLM provider configuration
@@ -1024,8 +1030,10 @@ Since this is a personal tool without analytics infrastructure, success is measu
 ```
 
 ### Key Design Decisions
+- **Split architecture** (Python API + React SPA) — Python for LLM SDK ecosystem and async streaming, React for UI component ecosystem and AI code generation quality
 - **Full snapshots for versioning** (not diffs) — simpler code, instant revert, negligible storage for local app
 - **LLM-driven voice merging** (not algorithmic) — qualitative style attributes can't be mathematically averaged
 - **Deterministic confidence scoring** (except voice consistency) — fast, predictable, no LLM cost
 - **AI-driven authenticity scoring** — requires nuanced judgment that heuristics can't provide
 - **Platform constants in code** (not database) — type-safe, no migration needed, each platform needs custom logic anyway
+- **REST over GraphQL** — simpler for single-user local app, better AI code generation support
