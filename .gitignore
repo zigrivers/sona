@@ -52,6 +52,13 @@ htmlcov/
 *.pyc
 *.so
 
+# === Application data ===
+data/*
+!data/.gitkeep
+
+# === Frontend build ===
+frontend/dist/
+
 # === Worktree directories (safety net) ===
 # Worktrees are created as siblings (../sona-agent-N/), not children.
 # This catches accidental creation inside the repo.

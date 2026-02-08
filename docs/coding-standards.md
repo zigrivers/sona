@@ -26,43 +26,62 @@ Definitive code quality reference for the Sona project. Every AI agent and human
 
 ### Directory Layout
 
+> See `docs/project-structure.md` for detailed file placement rules and parallel-agent conflict mitigation.
+
 ```
 sona/
 ├── backend/
 │   ├── app/
 │   │   ├── __init__.py
-│   │   ├── main.py              # FastAPI app, lifespan, global exception handlers
+│   │   ├── main.py              # FastAPI app, lifespan, global exception handler
 │   │   ├── config.py            # pydantic-settings configuration
-│   │   ├── exceptions.py        # Domain exception classes
+│   │   ├── constants.py         # Compile-time constants (platforms, thresholds, pricing)
+│   │   ├── exceptions.py        # Domain exception classes (append-only)
 │   │   ├── database.py          # Engine, session factory, Base
 │   │   ├── api/                 # Route handlers (thin — delegate to services)
 │   │   │   ├── __init__.py
+│   │   │   ├── router.py        # Single router composition entry point
+│   │   │   ├── deps.py          # Shared FastAPI dependencies (get_session, get_llm_provider)
 │   │   │   ├── clones.py
 │   │   │   ├── content.py
 │   │   │   ├── samples.py
-│   │   │   ├── settings.py
+│   │   │   ├── methodology.py
 │   │   │   └── providers.py
 │   │   ├── models/              # SQLAlchemy ORM models
 │   │   │   ├── __init__.py
 │   │   │   ├── clone.py
 │   │   │   ├── content.py
+│   │   │   ├── dna.py           # VoiceDNAVersion model
 │   │   │   ├── sample.py
-│   │   │   └── methodology.py
+│   │   │   ├── methodology.py
+│   │   │   └── preset.py        # GenerationPreset model
 │   │   ├── schemas/             # Pydantic request/response schemas
 │   │   │   ├── __init__.py
 │   │   │   ├── clone.py
 │   │   │   ├── content.py
+│   │   │   ├── dna.py
 │   │   │   ├── sample.py
-│   │   │   └── settings.py
+│   │   │   ├── methodology.py
+│   │   │   ├── preset.py
+│   │   │   ├── provider.py
+│   │   │   └── scoring.py       # Authenticity scoring schemas
 │   │   ├── services/            # Business logic (testable, framework-agnostic)
 │   │   │   ├── __init__.py
 │   │   │   ├── clone_service.py
 │   │   │   ├── content_service.py
+│   │   │   ├── dna_service.py
 │   │   │   ├── sample_service.py
-│   │   │   └── methodology_service.py
+│   │   │   ├── methodology_service.py
+│   │   │   ├── scoring_service.py
+│   │   │   ├── preset_service.py
+│   │   │   ├── provider_service.py
+│   │   │   ├── scraping_service.py
+│   │   │   └── file_parser.py
 │   │   ├── llm/                 # LLM provider abstraction
 │   │   │   ├── __init__.py
 │   │   │   ├── base.py          # LLMProvider protocol
+│   │   │   ├── registry.py      # Provider factory
+│   │   │   ├── prompts.py       # Prompt templates
 │   │   │   ├── openai.py
 │   │   │   ├── anthropic.py
 │   │   │   └── google.py
@@ -74,41 +93,51 @@ sona/
 │   │   └── test_llm/
 │   ├── alembic/
 │   │   ├── env.py
+│   │   ├── script.py.mako
 │   │   └── versions/
 │   ├── alembic.ini
 │   └── pyproject.toml           # Tool config (ruff, pyright, pytest)
 ├── frontend/
 │   ├── src/
-│   │   ├── components/          # Reusable UI components
-│   │   │   ├── ui/              # shadcn/ui primitives (Button, Input, etc.)
-│   │   │   └── ...              # App-specific components (CloneCard, DnaRadar, etc.)
+│   │   ├── components/
+│   │   │   ├── ui/              # shadcn/ui primitives (only barrel file allowed)
+│   │   │   ├── layout/          # AppLayout, Sidebar, Header
+│   │   │   ├── shared/          # Cross-feature reusable (2+ feature importers)
+│   │   │   ├── clones/          # Voice clone feature components
+│   │   │   ├── samples/         # Writing sample feature components
+│   │   │   ├── content/         # Content generation + library components
+│   │   │   ├── merge/           # Voice merging components
+│   │   │   └── settings/        # Provider config + methodology editor
 │   │   ├── pages/               # Route-level page components
 │   │   │   ├── clones/
 │   │   │   ├── create/
 │   │   │   ├── library/
 │   │   │   └── settings/
-│   │   ├── hooks/               # Custom React hooks
-│   │   │   ├── use-clones.ts
-│   │   │   ├── use-content.ts
-│   │   │   └── ...
+│   │   ├── hooks/               # Custom React hooks (one file per domain)
 │   │   ├── lib/                 # Non-React utilities
 │   │   │   ├── api.ts           # HTTP client (fetch wrapper)
 │   │   │   ├── query-keys.ts    # TanStack Query key factory
-│   │   │   └── utils.ts         # Pure utility functions
-│   │   ├── types/               # TypeScript type definitions
-│   │   │   ├── api.ts           # API response types (derived from Zod schemas)
-│   │   │   └── ...
+│   │   │   ├── utils.ts         # Pure utility functions
+│   │   │   └── platforms.ts     # Platform constants and formatting
+│   │   ├── types/               # Zod schemas + inferred types
+│   │   │   ├── api.ts
+│   │   │   ├── platforms.ts
+│   │   │   └── dna.ts
 │   │   ├── stores/              # Zustand stores (client-only state)
-│   │   │   └── ui-store.ts
+│   │   │   ├── ui-store.ts
+│   │   │   └── generator-store.ts
 │   │   ├── test/                # Shared test utilities
 │   │   │   ├── setup.ts         # Vitest setup (jsdom, jest-dom matchers)
 │   │   │   ├── render.tsx       # Custom render (QueryClient + Router)
-│   │   │   ├── handlers.ts      # MSW request handlers
-│   │   │   └── factories.ts     # Test data factories
+│   │   │   ├── handlers.ts      # MSW handler composition (imports from handlers/)
+│   │   │   ├── factories.ts     # Test data factories
+│   │   │   └── handlers/        # Per-domain MSW handlers
+│   │   ├── styles/
+│   │   │   └── globals.css      # Tailwind v4 entry point
 │   │   ├── App.tsx
 │   │   └── main.tsx
 │   ├── e2e/                     # Playwright E2E tests
-│   │   └── ...
+│   │   └── pages/               # Page objects
 │   ├── index.html
 │   ├── vite.config.ts
 │   ├── eslint.config.mjs
@@ -123,15 +152,19 @@ sona/
 │   ├── tech-stack.md
 │   ├── coding-standards.md      # This file
 │   ├── tdd-standards.md
-│   └── git-workflow.md
+│   ├── git-workflow.md
+│   └── project-structure.md     # File placement rules
 ├── tasks/
 │   └── lessons.md
+├── scripts/
+│   └── setup-agent-worktree.sh
 ├── .editorconfig
 ├── .env.example
 ├── .gitignore
+├── AGENTS.md
+├── CLAUDE.md
 ├── Makefile
-├── Procfile
-└── CLAUDE.md
+└── Procfile
 ```
 
 ### Layer Architecture (Backend)
