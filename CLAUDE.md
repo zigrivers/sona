@@ -175,6 +175,24 @@ Key rules when in a worktree:
 | `docs/tech-stack.md` | Technology choices and rationale |
 | `tasks/lessons.md` | Patterns learned from past mistakes |
 
+## Project Structure Quick Reference
+
+- Backend route handlers: `backend/app/api/{domain}.py`
+- Backend services: `backend/app/services/{domain}_service.py`
+- Backend models: `backend/app/models/{domain}.py`
+- Backend schemas: `backend/app/schemas/{domain}.py`
+- LLM providers: `backend/app/llm/{provider}.py`
+- Frontend feature components: `frontend/src/components/{feature}/`
+- Frontend pages: `frontend/src/pages/{feature}/`
+- Frontend hooks: `frontend/src/hooks/use-{domain}.ts`
+- Shared components: `frontend/src/components/shared/` (only after 2+ features use it)
+- Frontend tests: co-located as `{ComponentName}.test.tsx`
+- Backend tests: `backend/tests/test_{layer}/test_{domain}.py`
+- E2E tests: `frontend/e2e/{flow-name}.spec.ts`
+- Migrations: `backend/alembic/versions/` (serialize via Beads deps)
+
+Before creating a new file, check `docs/project-structure.md` for the correct location.
+
 ## Self-Improvement
 
 - After ANY correction from the user: update `tasks/lessons.md` with the pattern
