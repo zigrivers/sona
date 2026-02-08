@@ -23,6 +23,8 @@ bd update <id> --status in_progress --claim
 ```
 Review `tasks/lessons.md` for relevant patterns before starting.
 
+**Parallel agents**: If running in a worktree (see [Parallel Sessions & Worktrees](#parallel-sessions--worktrees)), branch from `origin/main` and return to your home branch between tasks.
+
 ### 2. Plan Before Building
 - Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
 - If something goes sideways, **STOP and re-plan** — don't push through
@@ -33,6 +35,12 @@ Review `tasks/lessons.md` for relevant patterns before starting.
 2. **Green**: Write the minimum code to make it pass
 3. **Refactor**: Clean up while tests stay green
 4. Commit with task ID: `[BD-<short-id>] feat(scope): description` (where `<short-id>` is the task ID without the project prefix, e.g., `sona-ggg` becomes `ggg`)
+5. Push and create PR:
+   ```bash
+   git push -u origin HEAD
+   gh pr create --title "[BD-<short-id>] type(scope): description" --body "..."
+   gh pr merge --squash --auto --subject "[BD-<short-id>] type(scope): description"
+   ```
 
 For non-trivial changes, pause and ask: *"Is there a more elegant way?"*
 Skip this for simple, obvious fixes.
@@ -108,6 +116,64 @@ When given a bug report or enhancement request:
 **Every commit requires a Beads task ID.** This keeps Beads as the single source of truth for all changes.
 
 When pointing at logs, errors, or failing tests: just fix them. Zero hand-holding required from the user.
+
+## Parallel Sessions & Worktrees
+
+When multiple agents work simultaneously, each runs in a dedicated git worktree to avoid git state corruption.
+
+### Setup
+
+```bash
+# From the main repo root
+scripts/setup-agent-worktree.sh <N>    # Creates ../sona-agent-N/
+cd ../sona-agent-N/
+BD_ACTOR=agent-N claude                # Launch agent with identity
+```
+
+### Worktree Rules
+
+- **Branch from `origin/main`**, never local `main`:
+  ```bash
+  git fetch origin
+  git checkout -b bd-sona-xxx/feature origin/main
+  ```
+- **Return to home branch** between tasks: `git checkout agent-N-home`
+- **Never push home branches** — they're local parking only
+- **All worktrees share Beads** — `bd ready` shows the same tasks everywhere
+
+### PR Workflow in Worktrees
+
+```bash
+git push -u origin HEAD
+gh pr create --title "[BD-xxx] type(scope): desc" --body "..."
+gh pr merge --squash --auto --subject "[BD-xxx] type(scope): desc"
+git checkout agent-N-home              # Park after merge
+git branch -d bd-sona-xxx/feature      # Clean up local branch
+```
+
+See `docs/git-workflow.md` for the full workflow reference.
+
+## Worktree Awareness
+
+Detect if you're in a worktree:
+```bash
+git rev-parse --git-dir    # Contains /worktrees/ if in a worktree
+```
+
+Key rules when in a worktree:
+- **Never `git checkout main`** — use `origin/main` for branching instead
+- **Home branch is parking only** — never commit to it, never push it
+- **Use `git fetch origin`** to get the latest `main` — don't `git pull`
+- **Feature branches are ephemeral** — delete after merge
+
+## When to Consult Other Docs
+
+| Document | When |
+|----------|------|
+| `docs/git-workflow.md` | Branching, commits, PRs, conflict prevention, worktrees |
+| `docs/plan.md` | Architecture and product decisions |
+| `docs/tech-stack.md` | Technology choices and rationale |
+| `tasks/lessons.md` | Patterns learned from past mistakes |
 
 ## Self-Improvement
 
