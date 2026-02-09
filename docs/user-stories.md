@@ -39,8 +39,54 @@ Represents the system/developer perspective for infrastructure stories that enab
 | 6: Content Library & Versioning | 4.5 | US-034 – US-040 | 7 Must |
 | 7: Voice Merge System | 4.3, I8 | US-041 – US-044 | 3 Must, 1 Should |
 | 8: Polish & Enhancements | I4, I9, I11 | US-045 – US-049 | 0 Must, 5 Should |
+| 9: Innovation & Safety | Gap analysis, competitive | US-050 – US-058 | 0 Must, 9 Should |
 
-**Total: 49 stories** (35 Must-Have, 14 Should-Have)
+**Total: 58 stories** (35 Must-Have, 23 Should-Have)
+
+---
+
+## Story Dependencies
+
+Inter-story dependency graph. Arrow means "must be completed before." Use for Beads task setup: `bd dep add <child> <parent>`.
+
+```
+US-001 → US-002, US-003, US-017, US-023, US-030, US-033
+US-002 → US-007
+US-003 → US-007
+US-004 → US-005
+US-005 → US-017, US-023, US-030
+US-006 → US-007
+US-008 → US-009, US-010, US-011, US-013, US-014, US-015
+US-009 → US-013, US-017
+US-013 → US-014
+US-014 → US-015
+US-015 → US-052
+US-016 → US-017, US-019, US-020, US-021
+US-017 → US-018, US-019
+US-018 → US-013
+US-019 → US-055
+US-020 → US-041
+US-021 → US-053
+US-016 → US-053
+US-022 → US-023
+US-023 → US-024, US-025, US-029, US-030, US-045, US-046, US-050
+US-024 → US-025
+US-025 → US-026, US-051
+US-026 → US-036
+US-030 → US-031, US-051
+US-031 → US-032
+US-034 → US-035, US-036, US-058
+US-036 → US-037, US-038, US-039, US-040, US-050, US-058
+US-042 → US-043
+US-043 → US-044
+US-047 → US-049
+US-048 → US-049
+US-008 → US-056
+```
+
+**Reading the graph:** `US-001 → US-002` means "US-001 must complete before US-002 can start."
+
+**No dependencies (can start immediately):** US-001, US-004, US-008, US-016, US-022, US-034, US-042, US-047, US-048, US-054, US-057
 
 ---
 
@@ -64,6 +110,7 @@ Maps to: PRD 4.7 (LLM Provider Settings), 4.1 (Methodology Settings), I1 (Demo C
 - [ ] **Given** a provider registry in `backend/app/llm/registry.py` **When** `get_provider(name)` is called **Then** it returns the correct provider instance based on current configuration
 - [ ] **Given** the default provider is set to "anthropic" **When** `get_default_provider()` is called **Then** it returns the Anthropic provider instance
 - [ ] **Given** any provider call fails with an API error **When** the error is caught **Then** it is re-raised as a typed `LLMError` subclass with provider name, error type (auth/rate_limit/network/quota), and original message
+- [ ] **Given** any provider call fails with `LLMNetworkError` or `LLMRateLimitError` **When** the error is transient **Then** the call is automatically retried up to 2 times with exponential backoff (1s, 3s). `LLMAuthError` and `LLMQuotaError` are NOT retried — they fail immediately.
 
 **Scope Boundary:** Does NOT include the settings UI, API key storage, or connection testing endpoint. Those are US-002 and US-003.
 
@@ -211,9 +258,9 @@ Maps to: PRD 4.7 (LLM Provider Settings), 4.1 (Methodology Settings), I1 (Demo C
 **Acceptance Criteria:**
 
 - [ ] **Given** Sona starts for the first time (empty database) **When** the app initializes **Then** all 3 methodology sections are seeded with default content as version 1 with trigger type "seed"
-- [ ] **Given** the Voice Cloning Instructions default **When** it is reviewed **Then** it covers: analysis framework for 9 linguistic dimensions (vocabulary, sentence structure, paragraph structure, tone, rhetorical devices, punctuation, openings/closings, humor, signatures), what attributes to extract per dimension, output format matching Voice DNA JSON schema, guidance on distinguishing patterns from anomalies, instructions to evaluate consistency, instructions to assign prominence scores (0-100)
+- [ ] **Given** the Voice Cloning Instructions default **When** it is reviewed **Then** it is >= 1,500 words and covers all 9 linguistic dimensions (vocabulary, sentence structure, paragraph structure, tone, rhetorical devices, punctuation, openings/closings, humor, signatures) with 3+ sub-instructions per dimension. It also includes: output format matching Voice DNA JSON schema, guidance on distinguishing patterns from anomalies, instructions to evaluate consistency, instructions to assign prominence scores (0-100).
 - [ ] **Given** the Authenticity Guidelines default **When** it is reviewed **Then** it covers: avoiding AI tells (repetitive transitions, hedging, generic conclusions), incorporating voice elements (contractions, punctuation habits, sentence variety), maintaining natural imperfection, matching vocabulary complexity, authentic openings/closings
-- [ ] **Given** the Platform Best Practices default **When** it is reviewed **Then** it covers per-platform sections for: LinkedIn, Twitter/X, Facebook, Instagram, Blog, Email, Newsletter, SMS — each with character/length constraints, formatting conventions, tone norms, hashtag/mention usage, CTA conventions
+- [ ] **Given** the Platform Best Practices default **When** it is reviewed **Then** it has a dedicated section per platform for: LinkedIn, Twitter/X, Facebook, Instagram, Blog, Email, Newsletter, SMS — each section includes: character/word limit, formatting conventions, tone norms, hashtag/mention usage, CTA conventions
 - [ ] **Given** the database already has methodology content **When** the app restarts **Then** the seed does NOT overwrite existing content
 
 **Scope Boundary:** Does NOT include methodology editing (US-004). Content should be comprehensive but can be iterated post-launch.
@@ -254,7 +301,7 @@ Maps to: PRD 4.7 (LLM Provider Settings), 4.1 (Methodology Settings), I1 (Demo C
 - Seed data in `backend/app/seed.py`
 
 **Technical Notes:**
-- The demo DNA should be realistic and internally consistent (e.g., "Professional Blogger" should have high formality, structured paragraph patterns, moderate humor)
+- All 9 DNA categories must be populated (no empty arrays or null values). Prominence scores must be in the 20-95 range. DNA must be internally consistent: "Professional Blogger" formality > 60; "Casual Social" formality < 50. Each demo clone's scores must form a distinct shape on the radar chart.
 - Demo writing samples should be 3-5 representative pieces per clone, each 200-800 words
 - Confidence scores pre-calculated: word count component + sample count component + content type variety + length mix (deterministic components only, consistency score set to a reasonable value like 12/15)
 
@@ -274,6 +321,8 @@ Maps to: PRD 4.7 (LLM Provider Settings), 4.1 (Methodology Settings), I1 (Demo C
 - [ ] **Given** the user configures a provider successfully **When** they are redirected back to `/clones` **Then** a success toast appears: "AI provider configured! You're ready to go."
 - [ ] **Given** a provider is configured but no user clones exist **When** the user views `/clones` **Then** demo clones are shown with a "Create Your First Clone" CTA button
 - [ ] **Given** the user skips provider setup **When** they navigate freely **Then** the app is fully navigable — creating clones, adding samples, browsing the library all work; only AI-powered actions are blocked
+- [ ] **Given** the user navigates to `/` (root URL) **When** the route resolves **Then** they are redirected to `/clones`
+- [ ] **Given** the `RequiresProvider` guard component **When** it checks provider status **Then** it checks live provider status (not just initial config). If an API key is removed mid-session, the same friendly "No AI provider configured" message appears on the next AI action attempt.
 
 **Scope Boundary:** Does NOT include the clone list page itself (US-014) or clone creation (US-008). Only covers the empty/first-run states and provider-missing guard.
 
@@ -304,8 +353,10 @@ Maps to: PRD 4.2 (Clone CRUD, Samples, Confidence), I2 (Auto-detect Content Type
 - [ ] **Given** the user clicks "New Clone" **When** they enter a name and optionally a description and tags **Then** a new clone is created with `type` = "original", confidence score 0, and the user lands on the clone detail page
 - [ ] **Given** a clone exists **When** the user views the clone detail page header **Then** they see: clone name (inline-editable), type badge, confidence score badge, action buttons
 - [ ] **Given** the user edits clone metadata (name, description, tags) **When** they save (blur or explicit save) **Then** the changes are persisted; name is required, others optional
-- [ ] **Given** the user uploads an avatar (JPG, PNG, WebP, max 2MB) **When** it is saved **Then** it is auto-resized to 128×128 and stored in `data/avatars/`
+- [ ] **Given** the user uploads an avatar (JPG, PNG, WebP, max 2MB) **When** it is saved **Then** it is auto-resized to 128×128 using Pillow with LANCZOS resampling, converted to WebP format, and stored in `data/avatars/{clone_id}.webp`
+- [ ] **Given** the user uploads a non-JPG/PNG/WebP file or a file >2MB **When** validation runs **Then** an error toast appears: "Avatars must be JPG, PNG, or WebP and under 2MB."
 - [ ] **Given** no avatar is uploaded **When** the clone is displayed **Then** a colored circle with the clone's initials is shown as default
+- [ ] **Given** the user creates a clone with a name that already exists **When** saved **Then** the clone is created successfully — duplicate clone names are allowed
 - [ ] **Given** the user clicks "Delete" on a non-demo clone **When** the confirmation dialog appears **Then** it reads: "Delete [name]? This clone and all its writing samples and DNA versions will be permanently deleted. Content generated from this clone will be preserved but will show '[Deleted clone]' as the voice source."
 - [ ] **Given** the user confirms deletion **When** the clone is deleted **Then** all associated samples and DNA versions are deleted; content records retain the clone name for display but the FK is nullified
 - [ ] **Given** a demo clone **When** the user views it **Then** the delete action is hidden
@@ -349,6 +400,7 @@ Maps to: PRD 4.2 (Clone CRUD, Samples, Confidence), I2 (Auto-detect Content Type
 - [ ] **Given** a sample is added **When** the samples list refreshes **Then** the new sample appears with: content type, word count, source type "paste", date added, delete button
 - [ ] **Given** the user clicks delete on a sample **When** confirmed **Then** the sample is permanently deleted; confidence score updates for deterministic components; DNA is NOT re-analyzed automatically
 - [ ] **Given** the textarea is empty **When** the user tries to add **Then** the "Add" button is disabled
+- [ ] **Given** the user pastes text exceeding 50,000 words **When** the paste is processed **Then** a warning appears: "Your text exceeds 50,000 words. Only the first 50,000 words will be used." The text is truncated to the limit.
 
 **Scope Boundary:** Does NOT include file upload (US-010), URL scraping (US-011), or auto-detect content type (US-012). Content type is manually selected in this story.
 
@@ -444,13 +496,14 @@ Maps to: PRD 4.2 (Clone CRUD, Samples, Confidence), I2 (Auto-detect Content Type
 **Acceptance Criteria:**
 
 - [ ] **Given** the user pastes text into the add sample dialog **When** the text is entered **Then** the content type dropdown is pre-selected with the detected type and a "(detected)" label
-- [ ] **Given** text is <300 characters with hashtags present **When** auto-detect runs **Then** "Tweet (detected)" is selected
-- [ ] **Given** text has greeting/sign-off patterns (e.g., "Hi [name]", "Best regards") **When** auto-detect runs **Then** "Email (detected)" is selected
-- [ ] **Given** text is >500 words with markdown-style headings **When** auto-detect runs **Then** "Blog Post (detected)" is selected
-- [ ] **Given** text is 300-3000 characters without heading patterns **When** auto-detect runs **Then** "LinkedIn Post (detected)" is selected
-- [ ] **Given** text has multiple sections/headings + greeting **When** auto-detect runs **Then** "Newsletter (detected)" is selected
-- [ ] **Given** text has numbered items or sequential short segments **When** auto-detect runs **Then** "Thread (detected)" is selected
-- [ ] **Given** text matches no specific pattern **When** auto-detect runs **Then** "Other (detected)" is selected
+- [ ] **Given** text for auto-detection **When** the heuristic runs **Then** rules are evaluated in priority order (first match wins):
+  1. **Tweet:** <300 chars AND 1+ hashtag → "Tweet (detected)"
+  2. **Email:** greeting pattern (e.g., "Hi", "Hello", "Dear") AND sign-off pattern (e.g., "Best", "Regards", "Thanks", "Cheers") → "Email (detected)"
+  3. **Newsletter:** >200 words AND 2+ markdown-style headings AND greeting pattern → "Newsletter (detected)"
+  4. **Blog Post:** >500 words AND 1+ markdown-style heading → "Blog Post (detected)"
+  5. **Thread:** 3+ numbered items or 3+ segments separated by blank lines (each <300 chars) → "Thread (detected)"
+  6. **LinkedIn Post:** 300-3000 chars AND no heading patterns → "LinkedIn Post (detected)"
+  7. **Other:** fallback when no rule matches → "Other (detected)"
 - [ ] **Given** a content type is auto-detected **When** the user changes it manually **Then** the "(detected)" label disappears and the manual selection is used
 - [ ] **Given** a sample is saved with auto-detected type **When** it is stored **Then** `content_type_detected` is true
 - [ ] **Given** a file upload or URL import **When** text is extracted **Then** auto-detect also runs on the extracted content
@@ -619,7 +672,8 @@ Maps to: PRD 4.2 (DNA analysis, DNA versioning, radar chart), I7 (Radar Chart Vi
 - [ ] **Given** the analysis takes 10-30 seconds **When** in progress **Then** a loading indicator is shown on the clone detail page
 - [ ] **Given** the analysis fails (LLM error) **When** the error is returned **Then** a toast appears: "Voice analysis failed. Please check your API key settings and try again." Clone retains previous DNA (or none if first analysis)
 - [ ] **Given** the user clicks "Re-analyze Voice DNA" **When** a confirmation dialog appears **Then** it reads: "This will create a new DNA version using all current samples. Your previous DNA is preserved in version history."
-- [ ] **Given** samples total exceeds 80% of the model's context window **When** analysis is initiated **Then** a warning is shown: "Your samples total ~X tokens. [Model] supports Y tokens. The most recent samples will be prioritized."
+- [ ] **Given** samples total exceeds 80% of the model's context window **When** analysis is initiated **Then** a warning is shown: "Your samples total ~X tokens. [Model] supports Y tokens. Some samples were excluded." Truncation prioritizes: (1) most recent samples, (2) content-type variety. Oldest and most-similar samples are excluded first. The warning banner lists excluded sample IDs/titles.
+- [ ] **Given** the LLM returns invalid JSON **When** parsing fails **Then** the system retries once with an explicit instruction: "Respond only with valid JSON matching the schema." If the retry also fails, an error toast appears: "Voice analysis produced invalid results. Please try again."
 - [ ] **Given** the LLM model used **When** DNA is stored **Then** the `llm_model` field records which model produced this version
 
 **Scope Boundary:** Does NOT include the DNA display UI (US-020/US-021) or voice consistency scoring (US-018). This story covers the analysis orchestration and storage.
@@ -720,7 +774,9 @@ Maps to: PRD 4.2 (DNA analysis, DNA versioning, radar chart), I7 (Radar Chart Vi
 
 **Acceptance Criteria:**
 
-- [ ] **Given** the Voice DNA tab shows DNA fields **When** the user clicks an editable field **Then** text fields become editable inputs, enum fields become dropdowns, array fields become tag inputs, numeric fields (0-100) become sliders or number inputs
+- [ ] **Given** the Voice DNA tab shows DNA fields **When** the user clicks an editable field **Then** text fields become editable inputs, enum fields become dropdowns (no free-text entry), array fields become tag inputs, numeric fields (0-100) become sliders or number inputs
+- [ ] **Given** a numeric DNA field (0-100) **When** the user enters a value outside range **Then** the value is clamped to 0-100 with an inline error: "Value must be between 0 and 100"
+- [ ] **Given** an array DNA field (e.g., favorites, catchphrases) **When** the user adds items **Then** whitespace is trimmed, empty strings are rejected, and a maximum of 50 items is enforced. Attempting to add a 51st item shows: "Maximum 50 items allowed."
 - [ ] **Given** the user edits one or more DNA fields **When** they click "Save Changes" **Then** a new DNA version is created with trigger type "manual_edit" and all changes applied
 - [ ] **Given** no changes have been made **When** the save button is viewed **Then** it is disabled
 - [ ] **Given** the confidence score breakdown panel **When** specific components are low **Then** recommendations appear:
@@ -800,7 +856,8 @@ Maps to: PRD 4.4 (Content Generator), 4.6 (Platform Output Manager), I3 (Token C
 
 - [ ] **Given** valid form inputs (clone selected, input entered, at least one platform) **When** the user clicks "Generate" **Then** the backend generates one content version per selected platform
 - [ ] **Given** a generation request **When** the prompt is constructed **Then** it combines: Voice DNA JSON of selected clone, Authenticity Guidelines from methodology, Platform Best Practices for the selected platform, user input text, all configured properties (length, tone/humor/formality overrides, audience, CTA, include/exclude phrases)
-- [ ] **Given** multiple platforms are selected **When** generation runs **Then** each platform gets a separate, optimized LLM call; a progress indicator shows which platform is currently generating
+- [ ] **Given** multiple platforms are selected **When** generation runs **Then** all platform LLM calls run in parallel via `asyncio.gather()` with per-platform error handling. If one platform fails, the others continue. A progress indicator shows completed/total platforms (e.g., "3/5 platforms generated").
+- [ ] **Given** one platform fails during multi-platform generation **When** results are displayed **Then** successful platforms show their content; the failed platform shows an individual error message with a per-platform "Retry" button (retries only that platform, not all)
 - [ ] **Given** generation per platform **When** timing is measured **Then** target is <30 seconds per platform
 - [ ] **Given** generation completes **When** results are returned **Then** each platform version includes: generated content text, word count, character count
 - [ ] **Given** a generation takes longer than 60 seconds **When** the user is waiting **Then** a "Still working..." message appears (no timeout — let it complete)
@@ -834,7 +891,7 @@ Maps to: PRD 4.4 (Content Generator), 4.6 (Platform Output Manager), I3 (Token C
 - [ ] **Given** content under the platform limit **When** the indicator is shown **Then** it displays a green progress bar with character count
 - [ ] **Given** content approaching the limit (>80%) **When** the indicator is shown **Then** it displays a yellow progress bar
 - [ ] **Given** content over the limit **When** the indicator is shown **Then** it displays a red progress bar with the overage
-- [ ] **Given** Twitter content exceeds 280 characters **When** displayed **Then** a "Convert to thread?" button appears that splits content at sentence boundaries into numbered tweets
+- [ ] **Given** Twitter content exceeds 280 characters **When** the user clicks "Convert to thread?" **Then** content is split into numbered tweets using the following algorithm: split on sentence-ending punctuation (`.!?`), respect 280-character limit per tweet (including `1/N` numbering suffix), add `1/N` numbering to each tweet. If a single sentence exceeds 280 characters, split at the nearest word boundary before the limit.
 - [ ] **Given** multiple platforms are generated **When** displayed **Then** each platform version appears in its own tab
 
 **Scope Boundary:** Does NOT include pixel-perfect platform previews — v1 shows content with formatting hints and constraint checking only.
@@ -862,7 +919,7 @@ Maps to: PRD 4.4 (Content Generator), 4.6 (Platform Output Manager), I3 (Token C
 - [ ] **Given** generated content in the review panel **When** the user types directly in the content area **Then** inline editing works — changes are tracked
 - [ ] **Given** the "Regenerate" button **When** clicked **Then** the content is completely regenerated using the same inputs (new LLM call), creating a new version
 - [ ] **Given** the feedback input area **When** the user enters feedback (e.g., "make it shorter", "more humor") and clicks "Regenerate with Feedback" **Then** the feedback + current content + DNA are sent to the LLM for targeted improvement; result replaces current content as a new version
-- [ ] **Given** the user selects a portion of text **When** they click "Regenerate Selection" (button or right-click menu) **Then** only the selected portion is regenerated while surrounding text stays intact; the LLM receives surrounding context for flow
+- [ ] **Given** the user selects a portion of text **When** a floating "Regenerate Selection" button appears above the selection and is clicked **Then** only the selected portion is regenerated while surrounding text stays intact. The LLM receives: selected text + 500 characters before + 500 characters after + Voice DNA. No right-click context menu in v1.
 - [ ] **Given** any edit or regeneration **When** it completes **Then** a new content version is created for history tracking with the appropriate trigger type (inline_edit, regeneration, feedback_driven)
 - [ ] **Given** partial regeneration **When** it completes **Then** a note is shown: "Partial regeneration is best-effort. Review the boundaries between regenerated and original text."
 
@@ -1055,7 +1112,8 @@ Maps to: PRD 4.8 (Authenticity Scoring System), I6 (AI Detection Preview)
 
 **Acceptance Criteria:**
 
-- [ ] **Given** content is generated **When** generation completes **Then** authenticity scoring runs automatically and the score appears in the review panel next to the content
+- [ ] **Given** content is generated **When** generation completes **Then** authenticity scoring runs automatically for the first generated platform only. The score appears in the review panel next to the content.
+- [ ] **Given** multiple platforms are generated **When** the user switches to a non-scored platform tab **Then** scoring is triggered on-demand for that platform (with a "Scoring..." loading indicator). This avoids unnecessary LLM calls for platforms the user may not review.
 - [ ] **Given** content is regenerated or edited **When** saved **Then** the authenticity score is recalculated for the new version
 - [ ] **Given** the review panel **When** the score is displayed **Then** it shows: overall score badge + expandable 8-dimension breakdown (reusing US-031 components)
 - [ ] **Given** a platform tab in the review panel **When** selected **Then** its specific authenticity score is shown (each platform version scored independently)
@@ -1078,7 +1136,7 @@ Maps to: PRD 4.8 (Authenticity Scoring System), I6 (AI Detection Preview)
 
 - [ ] **Given** the review panel **When** the user clicks "Check AI Detection" **Then** the LLM evaluates the content for common AI-detection signals
 - [ ] **Given** the AI detection evaluation **When** it runs **Then** it checks for: repetitive sentence openers, overuse of transition words, lack of personal anecdotes, overly balanced paragraph lengths, hedging language, generic conclusions
-- [ ] **Given** the results **When** displayed **Then** they show: overall risk level (Low/Medium/High with green/yellow/red color), specific flagged passages with explanations, suggested fixes
+- [ ] **Given** the results **When** displayed **Then** they show: overall risk level derived from flagged passage count (Low = 0-1 flagged passages, Medium = 2-3, High = 4+) with green/yellow/red color coding, specific flagged passages with explanations, suggested fixes
 - [ ] **Given** a flagged passage **When** viewed **Then** it shows: highlighted text + reason (e.g., "3 consecutive paragraphs start with 'Furthermore' — AI detectors flag repetitive transitions") + suggested fix
 - [ ] **Given** the feature **When** displayed **Then** a disclaimer is shown: "This checks for common AI-detection patterns. No tool can guarantee undetectability."
 - [ ] **Given** the check **When** initiated **Then** the estimated cost is shown upfront before running
@@ -1163,7 +1221,9 @@ Maps to: PRD 4.5 (Content Library)
 - [ ] **Given** 1000+ items **When** the table is rendered **Then** virtual scrolling is used for performance (no pagination lag)
 - [ ] **Given** the table headers **When** clicked **Then** sorting toggles between: date (newest/oldest), authenticity score (high/low), status
 - [ ] **Given** a content row **When** clicked **Then** the user navigates to a detail view or a slide-out panel showing full content, metadata, and actions
+- [ ] **Given** a content detail view **When** the status badge is clicked **Then** a dropdown appears with all 5 statuses (draft, review, approved, published, archived). Selecting a status updates immediately. Transitions are unrestricted (any status → any status).
 - [ ] **Given** no content exists **When** the library is viewed **Then** an empty state appears: "No content yet. Create your first piece in the Content Generator." with a link to `/create`
+- [ ] **Given** the backend content list endpoint **When** queried **Then** it uses cursor-based pagination keyed on `(created_at, id)` with a default page size of 50. Response includes `next_cursor` field (null when no more results). Frontend uses virtual scroll for rendering + infinite scroll for fetching next pages.
 
 **Scope Boundary:** Does NOT include filtering (US-037), search (US-038), or bulk actions (US-039).
 
@@ -1524,6 +1584,252 @@ Maps to: I4 (A/B Variants), I9 (Keyboard Shortcuts), I11 (Before/After View)
 
 ---
 
+## Epic 9: Innovation & Safety
+
+New stories identified through gap analysis and competitive research. All "Should" priority.
+
+### US-050: One-click content repurposing from library
+
+**Epic:** 9 | **Priority:** Should | **Size:** S
+
+> As Alex, I want to repurpose existing content for a different platform directly from my library so that I can maximize the value of content I've already created.
+
+**Acceptance Criteria:**
+
+- [ ] **Given** a content detail view in the library **When** the user clicks "Repurpose for..." **Then** a dropdown lists all platforms NOT yet generated for this content (based on the original input + clone)
+- [ ] **Given** the user selects a platform from the repurpose dropdown **When** they confirm **Then** the app navigates to `/create` pre-populated with: the original user input, the same voice clone, and the newly selected platform
+- [ ] **Given** the pre-populated content generator **When** the user clicks "Generate" **Then** the standard generation flow runs (reuses US-023 backend). The resulting content is a new content record linked to the same clone.
+- [ ] **Given** content that was generated for all available platforms **When** the "Repurpose for..." dropdown is opened **Then** it shows "All platforms covered" (disabled state)
+
+**Scope Boundary:** Does NOT create a new content record automatically — the user still clicks Generate. This is a navigation/pre-fill shortcut only.
+
+**Data/State Requirements:**
+- No new backend endpoints — uses existing generation flow
+- Frontend reads the content's `platform` field and the global platform list to compute available platforms
+
+**Technical Notes:**
+- Frontend component: "Repurpose" dropdown in `frontend/src/components/content/ContentActions.tsx`
+- Navigation: uses React Router `navigate()` with state to pre-fill the create page
+
+---
+
+### US-051: Real-time authenticity preview during editing
+
+**Epic:** 9 | **Priority:** Should | **Size:** M
+
+> As Alex, I want to see my authenticity score update in real-time as I edit content so that I can immediately see if my changes improve or hurt voice match.
+
+**Acceptance Criteria:**
+
+- [ ] **Given** the review panel toolbar **When** the user toggles "Live Score" (default: off) **Then** a debounced authenticity score refresh activates — the score recalculates 2 seconds after the user stops typing
+- [ ] **Given** live scoring is active **When** the score refreshes **Then** a small "live score" badge appears next to the content showing the updated overall score with a delta indicator (e.g., "+3", "-5") compared to the previous score
+- [ ] **Given** live scoring detects a dimension dropping below 70 **When** the score refreshes **Then** that dimension's label flashes briefly (CSS animation) to draw attention
+- [ ] **Given** the "Live Score" toggle state **When** changed **Then** it is persisted in localStorage (default: off to avoid unnecessary API calls)
+- [ ] **Given** live scoring is active **When** the score is recalculated **Then** it uses the same `POST /api/content/:id/score` endpoint as US-030 (full re-score, not partial)
+
+**Scope Boundary:** Does NOT include partial scoring or dimension-specific re-scoring. Full re-score only. Does NOT auto-save edits — scoring runs on the in-memory content.
+
+**Data/State Requirements:**
+- No new backend endpoints — reuses existing scoring endpoint
+- Frontend debounce timer in component state
+
+**Technical Notes:**
+- Frontend component: `frontend/src/components/content/LiveScoreBadge.tsx`
+- Debounce: 2-second delay after last keystroke before triggering score API call
+- Toggle state: Zustand `ui-store.ts` persisted to localStorage
+
+---
+
+### US-052: Sample gap heatmap visualization
+
+**Epic:** 9 | **Priority:** Should | **Size:** S
+
+> As Alex, I want to see a visual map of which content types and lengths I've provided samples for so that I know exactly what's missing.
+
+**Acceptance Criteria:**
+
+- [ ] **Given** the Samples tab on a clone detail page **When** displayed **Then** a visual grid (heatmap) appears above the sample list. Rows = content types (tweet, thread, LinkedIn post, blog post, article, email, newsletter, essay). Columns = length categories (short, medium, long).
+- [ ] **Given** a cell in the heatmap **When** it has samples **Then** it is colored green and shows the sample count
+- [ ] **Given** a cell in the heatmap **When** it has no samples **Then** it is colored gray/empty
+- [ ] **Given** the heatmap **When** rendered below it **Then** auto-generated recommendation text appears based on empty cells (e.g., "Add a long blog post sample to improve voice capture for longer-form content"). This replaces/augments the text-only recommendations from US-021.
+- [ ] **Given** the heatmap **When** implemented **Then** it uses a simple HTML `<table>` with Tailwind CSS classes — no chart library required
+
+**Scope Boundary:** Does NOT include clickable cells or drag-and-drop. Display only.
+
+**Data/State Requirements:**
+- Uses existing `GET /api/clones/:id/samples` endpoint — frontend groups by content_type × length_category
+
+**Technical Notes:**
+- Frontend component: `frontend/src/components/samples/SampleGapHeatmap.tsx`
+- Built with HTML table + Tailwind (bg-green-100/bg-muted for cells)
+
+---
+
+### US-053: Voice DNA export as portable prompt
+
+**Epic:** 9 | **Priority:** Should | **Size:** S
+
+> As Jordan, I want to export a voice clone's DNA as a human-readable prompt so that I can use it in other AI tools.
+
+**Acceptance Criteria:**
+
+- [ ] **Given** the Voice DNA tab **When** the user clicks "Export as Prompt" **Then** a human-readable text version of the Voice DNA is generated, formatted as AI instructions
+- [ ] **Given** the exported prompt **When** generated **Then** it translates DNA fields to natural language (e.g., "Write with a professional, authoritative tone. Use complex vocabulary including industry jargon. Favor long sentences with compound-complex structures...")
+- [ ] **Given** the exported prompt **When** generated **Then** it includes a header: `# Voice Profile: [Clone Name] — Generated by Sona`
+- [ ] **Given** the exported prompt **When** displayed **Then** a "Copy to Clipboard" button copies the full text with a success toast
+- [ ] **Given** the export **When** generated **Then** it does NOT include raw JSON — all fields are translated to natural language instructions
+
+**Scope Boundary:** Does NOT include import of external prompts. Export only.
+
+**Data/State Requirements:**
+- No new backend endpoint — DNA-to-prompt translation runs on the frontend using the existing DNA JSON
+
+**Technical Notes:**
+- Frontend utility: `frontend/src/lib/dna-to-prompt.ts` — maps each DNA category to a natural language paragraph
+- Frontend component: "Export as Prompt" button in `frontend/src/components/clones/VoiceDNAActions.tsx`
+
+---
+
+### US-054: Data transparency page
+
+**Epic:** 9 | **Priority:** Should | **Size:** S
+
+> As Alex, I want to understand what data Sona stores and sends to LLM providers so that I can trust the product with my writing.
+
+**Acceptance Criteria:**
+
+- [ ] **Given** the user navigates to `/settings/privacy` **When** the page loads **Then** a static page (no backend calls) displays data transparency information
+- [ ] **Given** the transparency page **When** viewed **Then** it shows:
+  - Header: "Your data stays on your machine"
+  - Section "Stored locally": SQLite database, avatar images, .env API keys
+  - Section "Sent to LLM providers": writing samples (during DNA analysis), generated content (during scoring), prompts (during generation)
+  - Section "NOT sent anywhere": API keys are never sent to Sona servers, no analytics or telemetry, no data leaves your machine except to configured LLM providers
+  - Links to each provider's data/privacy policy (OpenAI, Anthropic, Google)
+- [ ] **Given** the Settings page **When** viewed **Then** "Privacy" appears as a tab alongside "Providers" and "Methodology"
+
+**Scope Boundary:** Static informational page only — no data export, no data deletion tools. Those are separate stories (US-057).
+
+**Technical Notes:**
+- Frontend page: `frontend/src/pages/settings/PrivacyPage.tsx`
+- No backend endpoint — all content is hardcoded in the component
+- Add to Settings layout tabs
+
+---
+
+### US-055: Voice evolution timeline
+
+**Epic:** 9 | **Priority:** Should | **Size:** M
+
+> As Jordan, I want to see how a voice clone's DNA has changed over time so that I can track voice evolution across re-analyses and edits.
+
+**Acceptance Criteria:**
+
+- [ ] **Given** the Voice DNA tab **When** a clone has 2+ DNA versions **Then** a "Voice Evolution" section appears below the radar chart
+- [ ] **Given** the evolution timeline **When** displayed **Then** it shows a vertical timeline of DNA version changes: version number, date, trigger type (initial_analysis, regeneration, manual_edit, revert, sample_change)
+- [ ] **Given** each timeline entry **When** displayed **Then** it shows a mini diff summary: for each dimension whose prominence score changed by > 5 points compared to the previous version, show the change as a badge (e.g., "+12 Humor", "-8 Tone")
+- [ ] **Given** a timeline entry **When** no dimensions changed by > 5 points **Then** it shows "Minor adjustments" instead of dimension badges
+- [ ] **Given** the timeline **When** interacted with **Then** it is read-only (revert functionality remains in the version history sidebar from US-019)
+- [ ] **Given** the timeline **When** implemented **Then** it uses a simple vertical timeline component built with Tailwind CSS — no chart library required
+
+**Scope Boundary:** Does NOT include revert functionality (that's US-019). Display only.
+
+**Data/State Requirements:**
+- Uses existing `GET /api/clones/:id/dna/versions` endpoint — frontend computes diffs between consecutive versions
+
+**Technical Notes:**
+- Frontend component: `frontend/src/components/clones/VoiceEvolutionTimeline.tsx`
+- Diff computation: compare `prominence_scores` between consecutive versions, filter to changes > 5 points
+
+---
+
+### US-056: Soft-delete for voice clones
+
+**Epic:** 9 | **Priority:** Should | **Size:** S
+
+> As Jordan, I want deleted clones to go to trash instead of being permanently removed so that I can recover from accidental deletions.
+
+**Acceptance Criteria:**
+
+- [ ] **Given** the user clicks "Delete" on a non-demo clone **When** confirmed **Then** the clone is soft-deleted: `deleted_at` timestamp is set. The clone is NOT permanently removed.
+- [ ] **Given** a soft-deleted clone **When** any query fetches clones **Then** deleted clones are filtered out by default (WHERE deleted_at IS NULL)
+- [ ] **Given** the clone list page **When** soft-deleted clones exist **Then** a collapsible "Trash" section appears at the bottom of the list showing deleted clones with a "days remaining" badge (e.g., "27 days left") indicating time until permanent deletion
+- [ ] **Given** a clone in the trash **When** the user clicks "Restore" **Then** `deleted_at` is set to NULL and the clone reappears in the normal list
+- [ ] **Given** a clone in the trash **When** the user clicks "Permanently Delete" **Then** a confirmation dialog appears: "This will permanently delete [name] and all its data. This cannot be undone." On confirm, the clone and all associated data (samples, DNA, content FKs) are hard-deleted per the original US-008 behavior.
+- [ ] **Given** the backend starts **When** initialization runs **Then** clones with `deleted_at` older than 30 days are auto-purged (permanently deleted)
+- [ ] **Given** a demo clone **When** delete is attempted **Then** the action is blocked — demo clones cannot be soft-deleted or hard-deleted
+
+**Scope Boundary:** Does NOT include trash for content items (only clones). Does NOT include bulk restore.
+
+**Data/State Requirements:**
+- Add `deleted_at` (datetime, nullable) column to `VoiceClone` model
+- Backend API: `DELETE /api/clones/:id` now sets `deleted_at` instead of hard-deleting
+- Backend API: `POST /api/clones/:id/restore` → clears `deleted_at`
+- Backend API: `DELETE /api/clones/:id/permanent` → hard-deletes (only available for soft-deleted clones)
+- Backend API: `GET /api/clones?include_deleted=true` → includes soft-deleted clones (for trash display)
+
+**Technical Notes:**
+- Backend: add migration for `deleted_at` column
+- Auto-purge: runs in FastAPI lifespan event on startup
+- Frontend: `frontend/src/components/clones/TrashSection.tsx`
+
+---
+
+### US-057: One-click database backup and restore
+
+**Epic:** 9 | **Priority:** Should | **Size:** S
+
+> As Alex, I want to backup and restore my Sona database so that I don't lose my voice clones and content if something goes wrong.
+
+**Acceptance Criteria:**
+
+- [ ] **Given** the Settings page **When** the user clicks "Backup Database" **Then** a native file save dialog opens (via backend endpoint that streams the SQLite file). The file is named `sona-backup-{YYYY-MM-DD}.db`.
+- [ ] **Given** the Settings page **When** a "Last backup" date exists **Then** it is displayed next to the Backup button (stored in localStorage)
+- [ ] **Given** the Settings page **When** the user clicks "Restore from Backup" **Then** a file upload dialog opens accepting `.db` files, followed by a confirmation: "This will replace ALL current data with the backup. The app will restart. Are you sure?"
+- [ ] **Given** the user confirms restore **When** the backup file is uploaded **Then** the backend stops DB connections, replaces the SQLite file, and triggers an app restart. On restart, all data from the backup is available.
+- [ ] **Given** the Backup/Restore buttons **When** displayed **Then** they are at the top level of `/settings` (not nested under a tab)
+
+**Scope Boundary:** Does NOT include scheduled/automatic backups. Manual only. Does NOT include backup validation or corruption detection.
+
+**Data/State Requirements:**
+- Backend API: `GET /api/backup` → streams the SQLite database file as a download
+- Backend API: `POST /api/restore` (multipart) → accepts a `.db` file, replaces the current database, triggers restart
+- Last backup date stored in localStorage
+
+**Technical Notes:**
+- Backend: `backend/app/api/backup.py`
+- SQLite backup: use `shutil.copy2()` of the database file (ensure WAL is checkpointed first via `PRAGMA wal_checkpoint(TRUNCATE)`)
+- Restore requires app restart — return a response instructing the frontend to reload after a delay
+
+---
+
+### US-058: Content import to library
+
+**Epic:** 9 | **Priority:** Should | **Size:** M
+
+> As Jordan, I want to import content I've written outside of Sona into my library so that I can track all my content in one place.
+
+**Acceptance Criteria:**
+
+- [ ] **Given** the content library page **When** the user clicks "Import Content" **Then** a dialog opens with: paste textarea OR file upload (.txt, .docx, .pdf — reuses parsing from US-010)
+- [ ] **Given** the import dialog **When** text is entered/uploaded **Then** the user fills in metadata: platform (dropdown, required), status (dropdown, default "published"), topic (text, optional), campaign (text, optional), tags (tag input, optional)
+- [ ] **Given** the import dialog **When** metadata is filled **Then** the user can optionally link to a voice clone (dropdown, optional — for organization only, not for scoring)
+- [ ] **Given** an imported content record **When** saved **Then** it has: `content_current` = the imported text, `content_original` = same text, no `authenticity_score`, no `authenticity_breakdown`, no `generation_properties`, no content versions beyond version 1
+- [ ] **Given** imported content **When** displayed in the library **Then** it shows an "Imported" badge (distinct from generated content)
+- [ ] **Given** imported content **When** the user tries to score authenticity **Then** the action is blocked unless a voice clone is linked: "Link a voice clone to this content to enable authenticity scoring."
+
+**Scope Boundary:** Does NOT include bulk import (one piece at a time). Does NOT include import from URLs (paste or file only).
+
+**Data/State Requirements:**
+- Add `is_imported` (bool, default false) to `Content` model (or derive from null `generation_properties`)
+- Backend API: `POST /api/content/import` with body `{content_text, platform, status?, topic?, campaign?, tags?, clone_id?}` → creates content record
+- Reuses file parsing from US-010 (`POST /api/clones/:id/samples/upload` endpoint logic extracted to shared service)
+
+**Technical Notes:**
+- Frontend component: `frontend/src/components/content/ImportContentDialog.tsx`
+- Backend: extract file parsing from `sample_service.py` into shared `backend/app/services/file_parser.py` (if not already extracted)
+
+---
+
 ## Won't-Have v1 (Explicit Exclusions)
 
 These items are explicitly out of scope per PRD Section 9. Do NOT implement these in any story:
@@ -1542,8 +1848,8 @@ These items are explicitly out of scope per PRD Section 9. Do NOT implement thes
 - Custom platform definitions (platform list is hardcoded)
 - Prompt history / general undo system
 - Internationalization (English-only)
-- Database backup/restore UI
-- Privacy dashboard
+- ~~Database backup/restore UI~~ → Now covered by US-057
+- ~~Privacy dashboard~~ → Now covered by US-054 (data transparency page)
 - Content brief templates
 - Style drift detection
 - Content calendar view
@@ -1589,28 +1895,31 @@ Every PRD section and enhancement mapped to story IDs:
 | Section 7 | Non-Functional (Context Window) | US-017, US-028 |
 | Section 7 | Non-Functional (Security) | US-001, US-002 |
 | Section 9 | Out of Scope | Won't-Have section above |
+| Innovation | Content repurposing | US-050 |
+| Innovation | Live authenticity preview | US-051 |
+| Innovation | Sample gap visualization | US-052 |
+| Innovation | DNA export as prompt | US-053 |
+| Innovation | Data transparency | US-054 |
+| Innovation | Voice evolution timeline | US-055 |
+| Innovation | Soft-delete clones | US-056 |
+| Innovation | Database backup/restore | US-057 |
+| Innovation | Content import | US-058 |
 
 ---
 
-## Ambiguities & Risks
+## Resolved Ambiguities
 
-Items that may need resolution during implementation:
+All ambiguities from the original gap analysis have been resolved inline in their respective stories:
 
-### Ambiguities
-
-1. **Avatar resize mechanism:** PRD says "auto-resized to 128×128" but doesn't specify the library. Suggest using Pillow on the backend. Clarify if WebP output format is acceptable for all avatars.
-
-2. **Clone selector "most recently used":** PRD says pre-select the most recently used clone on the content generator. Need to decide: tracked via localStorage (frontend), a `last_used_at` field on the clone, or a separate user preference record.
-
-3. **Thread splitting algorithm:** PRD says "splits at sentence boundaries" for Twitter threads. Need to define the exact splitting logic: split on sentence-ending punctuation, respecting 280-char limit per tweet, with numbering (1/N format).
-
-4. **Partial regeneration UX:** PRD acknowledges "seams may appear at boundaries." Need to decide: does the user select text in the textarea and click a button? Or right-click context menu? Or both?
-
-5. **Multi-platform generation parallelism:** PRD says each platform is a separate LLM call. Should these run in parallel (`asyncio.gather`) or sequentially? Parallel is faster but may hit rate limits.
-
-6. **Authenticity scoring timing:** US-032 says scoring runs automatically after generation. For multi-platform generation, that's potentially 8+ LLM calls (generation + scoring per platform). Consider making scoring on-demand instead of automatic.
-
-7. **Content library pagination strategy:** Virtual scrolling on frontend is specified, but backend needs a strategy too. Cursor-based pagination is more performant for large datasets; offset-based is simpler. Suggest cursor-based keyed on `created_at`.
+| # | Ambiguity | Resolution | Story |
+|---|-----------|------------|-------|
+| 1 | Avatar resize mechanism | Pillow with LANCZOS resampling, WebP output format | US-008 |
+| 2 | Clone selector "most recently used" | Zustand store (`generator-store.ts`) persisted to localStorage | US-022 |
+| 3 | Thread splitting algorithm | Split on sentence-ending punctuation (`.!?`), 280-char limit, `1/N` numbering, word-boundary fallback | US-024 |
+| 4 | Partial regeneration UX | Floating "Regenerate Selection" button appears on text highlight. No right-click menu in v1. | US-025 |
+| 5 | Multi-platform parallelism | `asyncio.gather()` with per-platform error handling. Failed platforms get individual Retry buttons. | US-023 |
+| 6 | Authenticity scoring timing | Auto-score only the first generated platform. Additional platforms scored on-demand when user switches tabs. | US-032 |
+| 7 | Content library pagination | Cursor-based pagination keyed on `(created_at, id)`, default page size 50, `next_cursor` in response. | US-036 |
 
 ### Risks
 
