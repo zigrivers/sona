@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.router import api_router
 from app.config import PROJECT_ROOT
 from app.database import Base, engine
 from app.exceptions import SonaError
@@ -45,6 +46,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(api_router)
+
 
 @app.exception_handler(SonaError)
 async def sona_error_handler(_request: Request, exc: SonaError) -> JSONResponse:
@@ -55,6 +58,9 @@ async def sona_error_handler(_request: Request, exc: SonaError) -> JSONResponse:
     )
 
 
-@app.get("/api/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
+@app.exception_handler(Exception)
+async def generic_error_handler(_request: Request, exc: Exception) -> JSONResponse:
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "code": "INTERNAL_ERROR"},
+    )
