@@ -1,17 +1,20 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Sona is an AI-powered language learning app. Architecture: React/TypeScript frontend (Vite) + Python backend (FastAPI) + PostgreSQL. Monorepo managed with pnpm and Make.
 
-## Project
+## Critical Rules
 
-Sona - new project, not yet scaffolded. Update this file as the codebase develops.
+1. **Never push to main** — all changes go through PRs with squash merge. Main is protected.
+2. **Every commit needs a Beads task ID** — format: `[BD-<short-id>] type(scope): description`
+3. **TDD always** — write a failing test first, then make it pass, then refactor. No exceptions.
+4. **Keep working** — after finishing a task, run `bd ready` and pick the next one. Stop only when no tasks remain.
+5. **Verify before done** — `make lint && make test` must pass before closing any task.
+6. **Never push home branches** — worktree home branches are local parking only.
 
 ## Core Principles
 
 - **Simplicity First**: Make every change as simple as possible. Minimal code, minimal impact. Don't over-engineer.
 - **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
-- **TDD Always**: Write failing tests first, then make them pass, then refactor. No exceptions.
-- **Prove It Works**: Never mark a task complete without demonstrating correctness — tests pass, logs clean, behavior verified.
 
 ## Workflow
 
@@ -20,22 +23,25 @@ Sona - new project, not yet scaffolded. Update this file as the codebase develop
 bd ready                    # See unblocked tasks
 # Pick lowest-ID available task
 bd update <id> --status in_progress --claim
+git fetch origin
+git checkout -b bd-<task-id>/<short-desc> origin/main
 ```
 Review `tasks/lessons.md` for relevant patterns before starting.
-
-**Parallel agents**: If running in a worktree (see [Parallel Sessions & Worktrees](#parallel-sessions--worktrees)), branch from `origin/main` and return to your home branch between tasks.
 
 ### 2. Plan Before Building
 - Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
 - If something goes sideways, **STOP and re-plan** — don't push through
 - Write specs upfront to reduce ambiguity
 
-### 3. Execute with TDD
+### 3. Implementation Loop
 1. **Red**: Write a failing test that defines the expected behavior
 2. **Green**: Write the minimum code to make it pass
 3. **Refactor**: Clean up while tests stay green
-4. Commit with task ID: `[BD-<short-id>] feat(scope): description` (where `<short-id>` is the task ID without the project prefix, e.g., `sona-ggg` becomes `ggg`)
-5. Push and create PR:
+4. **Verify**: `make lint && make test` — all green before committing
+5. **Commit**: `git commit -m "[BD-<short-id>] type(scope): description"`
+   - `<short-id>` = task ID without project prefix (e.g., `sona-ggg` → `ggg`)
+   - Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+6. **Push + PR**:
    ```bash
    git push -u origin HEAD
    gh pr create --title "[BD-<short-id>] type(scope): description" --body "..."
@@ -43,22 +49,21 @@ Review `tasks/lessons.md` for relevant patterns before starting.
    ```
 
 For non-trivial changes, pause and ask: *"Is there a more elegant way?"*
-Skip this for simple, obvious fixes.
 
-### 4. Subagent Strategy
+### 4. Ad-Hoc Fixes
+When given a bug report or ad-hoc request: create a Beads task first (`bd create "Fix: <desc>" -p 1 && bd update <id> --claim`), then follow the Implementation Loop above. When pointing at logs, errors, or failing tests: just fix them — zero hand-holding required.
+
+### 5. Subagent Strategy
 - Offload research, exploration, and parallel analysis to subagents
 - One task per subagent for focused execution — keeps main context clean
 - For complex problems, throw more compute at it via subagents
 
-### 5. Verification Before Done
-- Run all tests. Check logs. Diff behavior against main when relevant.
-- Ask: *"Would a staff engineer approve this?"*
-- Only then: `bd close <id>`
-
 ### 6. Continue to Next Task
 After completing a task:
 ```bash
-bd ready                    # Check for more unblocked tasks
+bd close <id>
+git branch -d bd-<task-id>/<short-desc>   # Clean up local branch
+bd ready                                    # Check for more unblocked tasks
 ```
 - If tasks are available: pick the lowest-ID, create a feature branch, and implement it
 - If no tasks available: you're done — all work is complete
@@ -66,31 +71,45 @@ bd ready                    # Check for more unblocked tasks
 
 ### 7. Session End (MANDATORY)
 ```bash
-bd close <id>   # or in_progress if not done
+bd close <id>               # or bd update <id> --status in_progress if not done
 bd sync
-git pull --rebase && git push
-git status                          # Must say "up to date"
 ```
+**Main repo**: `git checkout main && git pull --rebase origin main` (update local only — never push to main)
+**Worktree**: `git checkout agent-N-home` (park on home branch)
+
+Confirm: no uncommitted changes, no unpushed feature branches.
+
+## Git Rules
+
+| Rule | Details |
+|------|---------|
+| **Branch naming** | `bd-<task-id>/<short-desc>` (e.g., `bd-sona-abc/add-login`) |
+| **Commit format** | `[BD-<short-id>] type(scope): description` |
+| **PR flow** | `git push -u origin HEAD` → `gh pr create` → `gh pr merge --squash --auto` |
+| **Stay current** | `git fetch origin && git rebase origin/main` before pushing |
+| **Force push** | Only `--force-with-lease` on feature branches. **Never** force push to main. |
+
+### High-Conflict Files
+
+These files are frequently touched — serialize access via Beads dependencies (`bd dep add`):
+
+| File | Protocol |
+|------|----------|
+| `CLAUDE.md` | Only one task modifies at a time |
+| `pyproject.toml` | Serialize dependency additions |
+| Database migrations | Never run parallel migrations |
+| Shared config files | Serialize via task dependencies |
+
+Full reference: `docs/git-workflow.md`
 
 ## Task Management (Beads)
 
 All task tracking lives in Beads — no separate todo files.
 
-### Creating Tasks
-```bash
-bd create "Imperative, specific title" -p <0-3>
-# 0=blocking release  1=must-have v1  2=should-have  3=nice-to-have
-bd dep add <child> <parent>         # Child blocked by parent
-```
-
-Good: `"Fix streak calculation for timezone edge case"`
-Bad: `"Backend stuff"`
-
-### Key Commands
 | Command | Purpose |
 |---|---|
 | `bd ready` | Unblocked tasks ready for work |
-| `bd create "Title" -p N` | Create task with priority |
+| `bd create "Title" -p N` | Create task (0=blocker, 1=must-have, 2=should-have, 3=nice-to-have) |
 | `bd update <id> --status S` | Update status |
 | `bd update <id> --claim` | Claim task (uses BD_ACTOR for attribution) |
 | `bd dep add <child> <parent>` | Add dependency |
@@ -98,31 +117,15 @@ Bad: `"Backend stuff"`
 | `bd show <id>` | Full task details |
 | `bd sync` | Force sync to git |
 | `bd dep cycles` | Debug stuck tasks |
+| `bd close <id>` | Mark task complete |
 
 **NEVER** use `bd edit` — it opens an interactive editor and breaks AI agents.
 
-## Autonomous Bug Fixing
-
-When given a bug report or enhancement request:
-
-1. Create a Beads task: `bd create "Fix: <description>" -p 1`
-2. Claim it: `bd update <id> --claim`
-3. Create feature branch: `git checkout -b bd-<id>/<short-desc>`
-4. Implement with TDD (failing test first)
-5. Commit with task ID: `git commit -m "[BD-<short-id>] fix: description"` (strip project prefix from ID, e.g., `sona-ggg` → `ggg`)
-6. PR with squash merge — set the PR title to match commit convention so the squash commit message is correct: `[BD-<short-id>] type(scope): description`. Use `gh pr merge --squash --subject "[BD-<short-id>] type(scope): description"` to enforce this.
-7. Close task: `bd close <id>`
-
-**Every commit requires a Beads task ID.** This keeps Beads as the single source of truth for all changes.
-
-When pointing at logs, errors, or failing tests: just fix them. Zero hand-holding required from the user.
-
 ## Parallel Sessions & Worktrees
 
-When multiple agents work simultaneously, each runs in a dedicated git worktree to avoid git state corruption.
+When multiple agents work simultaneously, each runs in a dedicated git worktree.
 
 ### Setup
-
 ```bash
 # From the main repo root
 scripts/setup-agent-worktree.sh <N>    # Creates ../sona-agent-N/
@@ -130,118 +133,41 @@ cd ../sona-agent-N/
 BD_ACTOR=agent-N claude                # Launch agent with identity
 ```
 
-### Worktree Rules
-
-- **Branch from `origin/main`**, never local `main`:
-  ```bash
-  git fetch origin
-  git checkout -b bd-sona-xxx/feature origin/main
-  ```
-- **Return to home branch** between tasks: `git checkout agent-N-home`
-- **Never push home branches** — they're local parking only
-- **All worktrees share Beads** — `bd ready` shows the same tasks everywhere
-
-### PR Workflow in Worktrees
-
-```bash
-git push -u origin HEAD
-gh pr create --title "[BD-xxx] type(scope): desc" --body "..."
-gh pr merge --squash --auto --subject "[BD-xxx] type(scope): desc"
-git checkout agent-N-home              # Park after merge
-git branch -d bd-sona-xxx/feature      # Clean up local branch
-```
-
-See `docs/git-workflow.md` for the full workflow reference.
-
-## Worktree Awareness
-
-Detect if you're in a worktree:
+### Detect Worktree
 ```bash
 git rev-parse --git-dir    # Contains /worktrees/ if in a worktree
 ```
 
-Key rules when in a worktree:
-- **Never `git checkout main`** — use `origin/main` for branching instead
-- **Home branch is parking only** — never commit to it, never push it
-- **Use `git fetch origin`** to get the latest `main` — don't `git pull`
-- **Feature branches are ephemeral** — delete after merge
-
-## Design System
-
-- **Only use palette colors** — `bg-primary`, `text-muted-foreground`, never raw values like `bg-indigo-600`
-- **Only use scale spacing** — `gap-2`, `p-4`, `space-y-6`, never arbitrary values
-- **Follow component patterns** — use shadcn/ui primitives from `@/components/ui/`
-- **Use `cn()`** from `@/lib/utils` for class name merging
-- **Test dark mode** for every new UI component
-
-| Property | Value |
-|----------|-------|
-| Primary | Indigo (OKLCH 0.465 0.195 275) |
-| Font | Inter Variable |
-| Radius | 0.5rem |
-| Dark mode | `.dark` class on `<html>`, managed by `@/stores/ui-store` |
-| Showcase | `/design-system` route (dev only) |
-
-Reference: `docs/design-system.md` and `frontend/src/styles/globals.css`
-
-## Browser Testing
-
-Two approaches, each for a different purpose:
-
-| Approach | Tool | When |
-|----------|------|------|
-| **Automated E2E** | `pnpm test:e2e` | Repeatable tests for critical flows, CI |
-| **MCP visual verification** | `browser_snapshot` / `browser_take_screenshot` | Dev-time visual checks after implementing UI |
-
-### Automated E2E
-
-- Config: `frontend/playwright.config.ts`
-- Specs: `frontend/e2e/*.spec.ts` (kebab-case)
-- Page objects: `frontend/e2e/pages/*.ts` (PascalCase)
-- Run: `make test-e2e` or `make test-e2e-ui`
-- Follow Page Object Pattern (see `docs/tdd-standards.md`)
-
-### MCP Visual Verification
-
-Use during development to verify UI changes:
-
-1. `browser_navigate` to the page
-2. `browser_wait_for` content to load
-3. `browser_snapshot` to verify structure (preferred — fast, text-based)
-4. `browser_take_screenshot` for visual review (color, layout)
-
-**When to use:**
-- After implementing a UI component
-- Checking dark mode appearance
-- Verifying responsive layout at different viewports
-- Confirming interactive states (hover, focus, dialogs)
-
-**Prefer `browser_snapshot`** over screenshots — snapshots return the accessibility tree (structured, verifiable). Use screenshots only when visual appearance matters.
-
-### Screenshot Convention
-
-Save to `frontend/e2e/screenshots/` (gitignored):
-- Format: `{page}_{viewport}_{state}.png`
-- Example: `design-system_desktop_dark.png`
-
 ### Rules
+- **Branch from `origin/main`**: `git fetch origin && git checkout -b bd-<task-id>/<short-desc> origin/main`
+- **Never `git checkout main`** — it's checked out by the main repo
+- **Return to home branch** between tasks: `git checkout agent-N-home`
+- **Never push home branches** — local parking only
+- **Feature branches are ephemeral** — delete after merge
+- **All worktrees share Beads** — `bd ready` shows the same tasks everywhere
 
-- Always `browser_wait_for` before taking screenshots
-- Always `browser_close` when done
-- Capture both success and error states
-- Test desktop (1280px) and mobile (375px) for UI work
+## Quick Reference
 
-## When to Consult Other Docs
+### Dev Commands
 
-| Document | When |
-|----------|------|
-| `docs/git-workflow.md` | Branching, commits, PRs, conflict prevention, worktrees |
-| `docs/plan.md` | Architecture and product decisions |
-| `docs/tech-stack.md` | Technology choices and rationale |
-| `docs/design-system.md` | Colors, typography, components, dark mode |
-| `tasks/lessons.md` | Patterns learned from past mistakes |
+| Command | Purpose |
+|---------|---------|
+| `make install` | Install all backend + frontend dependencies |
+| `make dev-backend` | Start FastAPI on http://localhost:8000 |
+| `make dev-frontend` | Start Vite on http://localhost:5173 |
+| `make test` | Run all backend + frontend tests |
+| `make test-backend` | Run backend tests only |
+| `make test-frontend` | Run frontend tests only |
+| `make test-e2e` | Run Playwright E2E tests |
+| `make test-e2e-ui` | Run E2E tests with Playwright UI |
+| `make lint` | Run all linters and type checkers |
+| `make format` | Auto-fix formatting (ruff + prettier) |
 
-## Project Structure Quick Reference
+- Backend health check: `GET http://localhost:8000/api/health`
+- Frontend proxies `/api` to backend — use http://localhost:5173/api/health to test proxy
+- See `docs/dev-setup.md` for full setup guide and troubleshooting
+
+### Project Structure
 
 - Backend route handlers: `backend/app/api/{domain}.py`
 - Backend services: `backend/app/services/{domain}_service.py`
@@ -259,20 +185,62 @@ Save to `frontend/e2e/screenshots/` (gitignored):
 
 Before creating a new file, check `docs/project-structure.md` for the correct location.
 
-## Dev Environment
+### Design System
 
-| Command | Purpose |
-|---------|---------|
-| `make install` | Install all backend + frontend dependencies |
-| `make dev-backend` | Start FastAPI on http://localhost:8000 |
-| `make dev-frontend` | Start Vite on http://localhost:5173 |
-| `make test` | Run all backend + frontend tests |
-| `make lint` | Run all linters and type checkers |
-| `make format` | Auto-fix formatting (ruff + prettier) |
+- **Only use palette colors** — `bg-primary`, `text-muted-foreground`, never raw values like `bg-indigo-600`
+- **Only use scale spacing** — `gap-2`, `p-4`, `space-y-6`, never arbitrary values
+- **Follow component patterns** — use shadcn/ui primitives from `@/components/ui/`
+- **Use `cn()`** from `@/lib/utils` for class name merging
+- **Test dark mode** for every new UI component
 
-- Backend health check: `GET http://localhost:8000/api/health`
-- Frontend proxies `/api` to backend — use http://localhost:5173/api/health to test proxy
-- See `docs/dev-setup.md` for full setup guide and troubleshooting
+| Property | Value |
+|----------|-------|
+| Primary | Indigo (OKLCH 0.465 0.195 275) |
+| Font | Inter Variable |
+| Radius | 0.5rem |
+| Dark mode | `.dark` class on `<html>`, managed by `@/stores/ui-store` |
+| Showcase | `/design-system` route (dev only) |
+
+Reference: `docs/design-system.md` and `frontend/src/styles/globals.css`
+
+### When to Consult Other Docs
+
+| Document | When |
+|----------|------|
+| `docs/git-workflow.md` | Branching, commits, PRs, conflict prevention, worktrees |
+| `docs/plan.md` | Architecture and product decisions |
+| `docs/tech-stack.md` | Technology choices and rationale |
+| `docs/design-system.md` | Colors, typography, components, dark mode |
+| `docs/coding-standards.md` | Code patterns, naming, error handling, API design |
+| `docs/tdd-standards.md` | Testing patterns, fixtures, mocking strategy, E2E |
+| `docs/project-structure.md` | File placement rules, conflict mitigation |
+| `docs/user-stories.md` | Feature acceptance criteria and scope |
+| `docs/dev-setup.md` | Environment setup and troubleshooting |
+| `tasks/lessons.md` | Patterns learned from past mistakes |
+
+## Error Recovery
+
+| Scenario | Action |
+|----------|--------|
+| **Tests fail after changes** | Fix them and re-run. Never skip or mark task complete with failures. |
+| **Merge conflicts on rebase** | Resolve conflicts, `git rebase --continue`, push with `--force-with-lease`. |
+| **Push rejected** | `git fetch origin && git rebase origin/main`, then retry push. |
+| **Pre-commit hook fails** | Fix the issue, re-stage, create a **new** commit. Never use `--no-verify`. |
+| **`bd ready` returns nothing** | Session complete — inform the user all available work is done. |
+| **PR merge conflicts** | Rebase feature branch on `origin/main`, force-push with `--force-with-lease`, let auto-merge retry. |
+
+## Browser Testing
+
+| Approach | Tool | When |
+|----------|------|------|
+| **Automated E2E** | `make test-e2e` | Repeatable tests for critical flows, CI |
+| **MCP visual verification** | `browser_snapshot` / `browser_take_screenshot` | Dev-time visual checks after implementing UI |
+
+- E2E config: `frontend/playwright.config.ts` | Specs: `frontend/e2e/*.spec.ts` | Page objects: `frontend/e2e/pages/*.ts`
+- Follow Page Object Pattern (see `docs/tdd-standards.md`)
+- Prefer `browser_snapshot` (accessibility tree, fast) over screenshots. Use screenshots only when visual appearance matters.
+- Always `browser_wait_for` before snapshots/screenshots. Always `browser_close` when done.
+- Save screenshots to `frontend/e2e/screenshots/` (gitignored): `{page}_{viewport}_{state}.png`
 
 ## Self-Improvement
 
