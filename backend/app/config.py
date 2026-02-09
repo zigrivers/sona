@@ -18,5 +18,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     google_ai_api_key: str = ""
 
+    default_llm_provider: str = "openai"
+    default_openai_model: str = "gpt-4o"
+    default_anthropic_model: str = "claude-sonnet-4-5-20250929"
+    default_google_model: str = "gemini-2.0-flash"
+
 
 settings = Settings()

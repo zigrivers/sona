@@ -27,11 +27,15 @@ class SampleNotFoundError(SonaError):
 
 
 class ProviderNotConfiguredError(SonaError):
-    def __init__(self) -> None:
-        super().__init__(
-            detail="No AI provider configured. Add an API key in Settings > Providers.",
-            code="PROVIDER_NOT_CONFIGURED",
-        )
+    def __init__(self, provider_name: str = "") -> None:
+        if provider_name:
+            detail = (
+                f"Provider '{provider_name}' is not configured."
+                " Add an API key in Settings > Providers."
+            )
+        else:
+            detail = "No AI provider configured. Add an API key in Settings > Providers."
+        super().__init__(detail=detail, code="PROVIDER_NOT_CONFIGURED")
 
 
 class AnalysisFailedError(SonaError):
@@ -43,16 +47,32 @@ class AnalysisFailedError(SonaError):
 
 
 class LLMAuthError(SonaError):
-    pass
+    def __init__(
+        self, *, provider: str = "", detail: str = "", code: str = "LLM_AUTH_ERROR"
+    ) -> None:
+        msg = detail or f"Authentication failed for provider '{provider}'"
+        super().__init__(detail=msg, code=code)
 
 
 class LLMRateLimitError(SonaError):
-    pass
+    def __init__(
+        self, *, provider: str = "", detail: str = "", code: str = "LLM_RATE_LIMIT"
+    ) -> None:
+        msg = detail or f"Rate limit exceeded for provider '{provider}'"
+        super().__init__(detail=msg, code=code)
 
 
 class LLMNetworkError(SonaError):
-    pass
+    def __init__(
+        self, *, provider: str = "", detail: str = "", code: str = "LLM_NETWORK_ERROR"
+    ) -> None:
+        msg = detail or f"Network error for provider '{provider}'"
+        super().__init__(detail=msg, code=code)
 
 
 class LLMQuotaError(SonaError):
-    pass
+    def __init__(
+        self, *, provider: str = "", detail: str = "", code: str = "LLM_QUOTA_EXCEEDED"
+    ) -> None:
+        msg = detail or f"Quota exceeded for provider '{provider}'"
+        super().__init__(detail=msg, code=code)
