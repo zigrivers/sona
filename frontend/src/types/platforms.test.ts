@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { type PlatformKey,PLATFORMS } from './platforms';
+import { type PlatformKey, PLATFORMS } from './platforms';
 
 describe('PLATFORMS', () => {
   it('includes all 5 platforms', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
 
-import { DNA_CATEGORIES, type DNACategory,VoiceDNASchema } from './dna';
+import { DNA_CATEGORIES, type DNACategory, VoiceDNASchema } from './dna';
 
 describe('DNA_CATEGORIES', () => {
   it('has all 9 categories', () => {
@@ -100,7 +100,7 @@ describe('VoiceDNASchema', () => {
 
   it('rejects non-object values', () => {
     expect(() => VoiceDNASchema.parse({ ...fullDNA, vocabulary: 'not an object' })).toThrow(
-      ZodError,
+      ZodError
     );
   });
 });
