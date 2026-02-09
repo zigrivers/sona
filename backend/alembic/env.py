@@ -4,6 +4,13 @@ from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+# Import all models so Base.metadata registers them for autogenerate
+import app.models.clone
+import app.models.content
+import app.models.dna
+import app.models.methodology
+import app.models.preset
+import app.models.sample  # noqa: F401
 from alembic import context
 from app.database import Base
 
