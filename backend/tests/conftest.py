@@ -7,6 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.database import Base, get_session
 from app.main import app
+from app.models.clone import MergedCloneSource, VoiceClone  # noqa: F401
+from app.models.content import Content, ContentVersion  # noqa: F401
+from app.models.dna import VoiceDNAVersion  # noqa: F401
+from app.models.methodology import MethodologySettings, MethodologyVersion  # noqa: F401
+from app.models.preset import GenerationPreset  # noqa: F401
+from app.models.sample import WritingSample  # noqa: F401
 
 engine_test = create_async_engine(
     "sqlite+aiosqlite://",
