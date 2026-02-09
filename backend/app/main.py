@@ -1,11 +1,26 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.config import PROJECT_ROOT
 from app.database import Base, engine
+from app.exceptions import SonaError
+
+STATUS_MAP: dict[str, int] = {
+    "CLONE_NOT_FOUND": 404,
+    "SAMPLE_NOT_FOUND": 404,
+    "CONTENT_NOT_FOUND": 404,
+    "PROVIDER_NOT_CONFIGURED": 400,
+    "ANALYSIS_FAILED": 502,
+    "LLM_AUTH_ERROR": 401,
+    "LLM_RATE_LIMIT": 429,
+    "LLM_NETWORK_ERROR": 502,
+    "LLM_QUOTA_ERROR": 402,
+    "VALIDATION_ERROR": 422,
+}
 
 
 @asynccontextmanager
@@ -29,6 +44,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(SonaError)
+async def sona_error_handler(_request: Request, exc: SonaError) -> JSONResponse:
+    status_code = STATUS_MAP.get(exc.code, 400)
+    return JSONResponse(
+        status_code=status_code,
+        content={"detail": exc.detail, "code": exc.code},
+    )
 
 
 @app.get("/api/health")
