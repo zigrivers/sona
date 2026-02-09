@@ -184,6 +184,53 @@ Key rules when in a worktree:
 
 Reference: `docs/design-system.md` and `frontend/src/styles/globals.css`
 
+## Browser Testing
+
+Two approaches, each for a different purpose:
+
+| Approach | Tool | When |
+|----------|------|------|
+| **Automated E2E** | `pnpm test:e2e` | Repeatable tests for critical flows, CI |
+| **MCP visual verification** | `browser_snapshot` / `browser_take_screenshot` | Dev-time visual checks after implementing UI |
+
+### Automated E2E
+
+- Config: `frontend/playwright.config.ts`
+- Specs: `frontend/e2e/*.spec.ts` (kebab-case)
+- Page objects: `frontend/e2e/pages/*.ts` (PascalCase)
+- Run: `make test-e2e` or `make test-e2e-ui`
+- Follow Page Object Pattern (see `docs/tdd-standards.md`)
+
+### MCP Visual Verification
+
+Use during development to verify UI changes:
+
+1. `browser_navigate` to the page
+2. `browser_wait_for` content to load
+3. `browser_snapshot` to verify structure (preferred — fast, text-based)
+4. `browser_take_screenshot` for visual review (color, layout)
+
+**When to use:**
+- After implementing a UI component
+- Checking dark mode appearance
+- Verifying responsive layout at different viewports
+- Confirming interactive states (hover, focus, dialogs)
+
+**Prefer `browser_snapshot`** over screenshots — snapshots return the accessibility tree (structured, verifiable). Use screenshots only when visual appearance matters.
+
+### Screenshot Convention
+
+Save to `frontend/e2e/screenshots/` (gitignored):
+- Format: `{page}_{viewport}_{state}.png`
+- Example: `design-system_desktop_dark.png`
+
+### Rules
+
+- Always `browser_wait_for` before taking screenshots
+- Always `browser_close` when done
+- Capture both success and error states
+- Test desktop (1280px) and mobile (375px) for UI work
+
 ## When to Consult Other Docs
 
 | Document | When |

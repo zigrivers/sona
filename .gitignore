@@ -48,6 +48,13 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
+# === Playwright ===
+frontend/playwright-report/
+frontend/e2e-results/
+frontend/test-results/
+frontend/e2e/screenshots/*
+!frontend/e2e/screenshots/.gitkeep
+
 # === Build artifacts ===
 *.pyc
 *.so

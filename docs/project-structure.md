@@ -171,7 +171,9 @@ frontend/
 │       └── globals.css             # Tailwind v4 entry point
 ├── e2e/                            # Playwright E2E tests
 │   ├── pages/                      # Page objects
+│   ├── screenshots/                # MCP screenshots (gitignored)
 │   └── *.spec.ts                   # Test specs by flow name
+├── playwright.config.ts            # Playwright E2E config
 ├── index.html
 ├── vite.config.ts
 ├── eslint.config.mjs
@@ -412,7 +414,7 @@ These files live in `app/` root because they are shared across all domains:
 ### Committed
 
 - Source code (`.py`, `.ts`, `.tsx`, `.css`)
-- Config files (`pyproject.toml`, `package.json`, `tsconfig.json`, `vite.config.ts`, `eslint.config.mjs`, `.prettierrc`, `.editorconfig`, `alembic.ini`)
+- Config files (`pyproject.toml`, `package.json`, `tsconfig.json`, `vite.config.ts`, `playwright.config.ts`, `eslint.config.mjs`, `.prettierrc`, `.editorconfig`, `alembic.ini`)
 - Migrations (`alembic/versions/`)
 - Documentation (`docs/`, `CLAUDE.md`, `AGENTS.md`)
 - Scripts (`scripts/`)
@@ -432,6 +434,9 @@ These files live in `app/` root because they are shared across all domains:
 | `data/` | SQLite DB + avatars (runtime data) |
 | `.env` | Environment secrets |
 | `frontend/dist/` | Frontend build output |
+| `frontend/playwright-report/` | Playwright HTML report |
+| `frontend/e2e-results/` | Playwright test results |
+| `frontend/e2e/screenshots/` | MCP visual verification screenshots |
 | `htmlcov/` | Coverage reports |
 | `.ruff_cache/` | Ruff linter cache |
 | `.pytest_cache/` | Pytest cache |
