@@ -166,6 +166,24 @@ Key rules when in a worktree:
 - **Use `git fetch origin`** to get the latest `main` — don't `git pull`
 - **Feature branches are ephemeral** — delete after merge
 
+## Design System
+
+- **Only use palette colors** — `bg-primary`, `text-muted-foreground`, never raw values like `bg-indigo-600`
+- **Only use scale spacing** — `gap-2`, `p-4`, `space-y-6`, never arbitrary values
+- **Follow component patterns** — use shadcn/ui primitives from `@/components/ui/`
+- **Use `cn()`** from `@/lib/utils` for class name merging
+- **Test dark mode** for every new UI component
+
+| Property | Value |
+|----------|-------|
+| Primary | Indigo (OKLCH 0.465 0.195 275) |
+| Font | Inter Variable |
+| Radius | 0.5rem |
+| Dark mode | `.dark` class on `<html>`, managed by `@/stores/ui-store` |
+| Showcase | `/design-system` route (dev only) |
+
+Reference: `docs/design-system.md` and `frontend/src/styles/globals.css`
+
 ## When to Consult Other Docs
 
 | Document | When |
@@ -173,6 +191,7 @@ Key rules when in a worktree:
 | `docs/git-workflow.md` | Branching, commits, PRs, conflict prevention, worktrees |
 | `docs/plan.md` | Architecture and product decisions |
 | `docs/tech-stack.md` | Technology choices and rationale |
+| `docs/design-system.md` | Colors, typography, components, dark mode |
 | `tasks/lessons.md` | Patterns learned from past mistakes |
 
 ## Project Structure Quick Reference

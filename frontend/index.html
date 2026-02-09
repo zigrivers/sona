@@ -1,11 +1,25 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sona</title>
   </head>
   <body>
+    <script>
+      // Prevent dark mode flash — runs before React mounts
+      (function () {
+        try {
+          var store = JSON.parse(localStorage.getItem('sona-ui') || '{}');
+          var theme = store.state && store.state.theme;
+          var isDark =
+            theme === 'dark' ||
+            (theme !== 'light' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
