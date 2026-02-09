@@ -67,3 +67,21 @@ async def test_global_handler_returns_json_with_detail_and_code(
     assert "code" in data
     assert data["detail"] == "Something failed"
     assert data["code"] == "UNKNOWN_ERROR"
+
+
+async def test_generic_exception_returns_500() -> None:
+    """Non-SonaError exceptions should return 500 with generic message."""
+    from httpx import ASGITransport
+
+    @app.get("/api/_test/unhandled")
+    async def _raise_unhandled() -> None:
+        raise RuntimeError("unexpected crash")
+
+    transport = ASGITransport(app=app, raise_app_exceptions=False)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/api/_test/unhandled")
+
+    assert response.status_code == 500
+    data = response.json()
+    assert data["detail"] == "Internal server error"
+    assert data["code"] == "INTERNAL_ERROR"
