@@ -15,7 +15,6 @@ from app.models.content import Content
 from app.models.dna import VoiceDNAVersion
 from app.services.scoring_service import ScoringService, calculate_confidence
 
-
 # ── Confidence scoring helpers ─────────────────────────────────────
 
 
