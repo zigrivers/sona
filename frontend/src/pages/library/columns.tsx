@@ -1,5 +1,6 @@
 import type { ColumnDef } from '@tanstack/react-table';
 
+import { Checkbox } from '@/components/ui/checkbox';
 import type { ContentResponse } from '@/types/api';
 import { PLATFORMS } from '@/types/platforms';
 
@@ -9,6 +10,28 @@ import { StatusBadge } from './StatusBadge';
 export interface ContentRow extends ContentResponse {
   clone_name: string;
 }
+
+export const selectColumn: ColumnDef<ContentRow> = {
+  id: 'select',
+  header: ({ table }) => (
+    <Checkbox
+      checked={
+        table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')
+      }
+      onCheckedChange={(checked) => table.toggleAllPageRowsSelected(!!checked)}
+      aria-label="Select all"
+    />
+  ),
+  cell: ({ row }) => (
+    <Checkbox
+      checked={row.getIsSelected()}
+      onCheckedChange={(checked) => row.toggleSelected(!!checked)}
+      aria-label="Select row"
+      onClick={(e) => e.stopPropagation()}
+    />
+  ),
+  enableSorting: false,
+};
 
 export const columns: ColumnDef<ContentRow>[] = [
   {

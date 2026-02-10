@@ -7,18 +7,58 @@ import type { AuthenticityScoreResponse, ContentListResponse, ContentResponse } 
 interface ContentListParams {
   sort?: string;
   order?: string;
+  clone_id?: string;
+  platform?: string;
+  status?: string;
+  search?: string;
 }
 
 export function useContentList(params: ContentListParams = {}) {
   const searchParams = new URLSearchParams();
   if (params.sort) searchParams.set('sort', params.sort);
   if (params.order) searchParams.set('order', params.order);
+  if (params.clone_id) searchParams.set('clone_id', params.clone_id);
+  if (params.platform) searchParams.set('platform', params.platform);
+  if (params.status) searchParams.set('status', params.status);
+  if (params.search) searchParams.set('search', params.search);
   const qs = searchParams.toString();
   const url = qs ? `/api/content?${qs}` : '/api/content';
 
   return useQuery({
     queryKey: queryKeys.content.list(params),
     queryFn: () => api.get<ContentListResponse>(url),
+  });
+}
+
+export function useBulkUpdateStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { ids: string[]; status: string }) =>
+      api.post('/api/content/bulk/status', body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.list() });
+    },
+  });
+}
+
+export function useBulkDelete() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { ids: string[] }) => api.post('/api/content/bulk/delete', body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.list() });
+    },
+  });
+}
+
+export function useBulkAddTags() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { ids: string[]; tags: string[] }) =>
+      api.post('/api/content/bulk/tag', body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.list() });
+    },
   });
 }
 
