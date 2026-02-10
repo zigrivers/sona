@@ -15,6 +15,7 @@ const settingsItems = [
   { label: 'Providers', href: '/settings/providers' },
   { label: 'Methodology', href: '/settings/methodology' },
   { label: 'Presets', href: '/settings/presets' },
+  { label: 'Data & Privacy', href: '/settings/data' },
 ];
 
 export function Sidebar() {

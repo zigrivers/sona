@@ -163,6 +163,18 @@ export const ProviderTestResponseSchema = z.object({
 
 export type ProviderTestResponse = z.infer<typeof ProviderTestResponseSchema>;
 
+// ── Data ──────────────────────────────────────────────────────────
+
+export const DatabaseStatsResponseSchema = z.object({
+  db_location: z.string(),
+  db_size_bytes: z.number().int(),
+  clone_count: z.number().int(),
+  content_count: z.number().int(),
+  sample_count: z.number().int(),
+});
+
+export type DatabaseStatsResponse = z.infer<typeof DatabaseStatsResponseSchema>;
+
 // ── Scoring ────────────────────────────────────────────────────────
 
 export const DimensionScoreSchema = z.object({

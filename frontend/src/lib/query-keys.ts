@@ -29,4 +29,8 @@ export const queryKeys = {
   providers: {
     all: () => ['providers'] as const,
   },
+
+  data: {
+    stats: () => ['data', 'stats'] as const,
+  },
 };
