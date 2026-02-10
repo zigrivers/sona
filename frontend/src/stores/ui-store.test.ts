@@ -10,6 +10,7 @@ describe('useUIStore', () => {
       sidebarCollapsed: false,
       hideDemoClones: false,
       showInputPanel: false,
+      commandPaletteOpen: false,
     });
     document.documentElement.classList.remove('dark');
     localStorage.clear();
@@ -66,5 +67,17 @@ describe('useUIStore', () => {
 
     useUIStore.getState().setShowInputPanel(false);
     expect(useUIStore.getState().showInputPanel).toBe(false);
+  });
+
+  it('defaults command palette to closed', () => {
+    expect(useUIStore.getState().commandPaletteOpen).toBe(false);
+  });
+
+  it('setCommandPaletteOpen toggles the state', () => {
+    useUIStore.getState().setCommandPaletteOpen(true);
+    expect(useUIStore.getState().commandPaletteOpen).toBe(true);
+
+    useUIStore.getState().setCommandPaletteOpen(false);
+    expect(useUIStore.getState().commandPaletteOpen).toBe(false);
   });
 });

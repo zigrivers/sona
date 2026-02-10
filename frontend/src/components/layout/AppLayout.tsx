@@ -1,9 +1,14 @@
 import { Outlet } from 'react-router-dom';
 
+import { CommandPalette } from '@/components/shared/CommandPalette';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
+
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 
 export function AppLayout() {
+  useKeyboardShortcuts();
+
   return (
     <div className="bg-background flex h-screen">
       <Sidebar />
@@ -13,6 +18,7 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+      <CommandPalette />
     </div>
   );
 }
