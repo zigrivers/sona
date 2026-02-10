@@ -20,10 +20,10 @@ describe('MSW server', () => {
     expect(data[0].name).toBe('openai');
   });
 
-  it('should intercept GET /api/methodology', async () => {
-    const response = await fetch('/api/methodology');
+  it('should intercept GET /api/methodology/:section', async () => {
+    const response = await fetch('/api/methodology/voice_cloning');
     const data = await response.json();
-    expect(data).toHaveLength(1);
-    expect(data[0].section_key).toBe('voice_cloning');
+    expect(data.section_key).toBe('voice_cloning');
+    expect(data.current_content).toBe('Voice cloning methodology instructions.');
   });
 });

@@ -43,6 +43,21 @@ describe('queryKeys.methodology', () => {
   it('all() returns methodology base key', () => {
     expect(queryKeys.methodology.all()).toEqual(['methodology']);
   });
+
+  it('section(key) returns methodology section key', () => {
+    expect(queryKeys.methodology.section('voice_cloning')).toEqual([
+      'methodology',
+      'voice_cloning',
+    ]);
+  });
+
+  it('versions(key) returns methodology versions key', () => {
+    expect(queryKeys.methodology.versions('voice_cloning')).toEqual([
+      'methodology',
+      'voice_cloning',
+      'versions',
+    ]);
+  });
 });
 
 describe('queryKeys.providers', () => {
