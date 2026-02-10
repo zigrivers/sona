@@ -67,4 +67,27 @@ export const contentHandlers = [
     );
     return HttpResponse.json({ items }, { status: 201 });
   }),
+
+  http.put('/api/content/:id', async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(
+      buildContentItem({
+        id: params.id as string,
+        content_current: (body.content_current as string) ?? 'Updated content.',
+        status: (body.status as string) ?? 'draft',
+      })
+    );
+  }),
+
+  http.post('/api/content/:id/score', () => {
+    return HttpResponse.json({
+      overall_score: 78,
+      dimensions: [
+        { name: 'Vocabulary', score: 80, feedback: 'Good match' },
+        { name: 'Tone', score: 75, feedback: 'Slightly off' },
+        { name: 'Structure', score: 82, feedback: 'Well organized' },
+        { name: 'Authenticity', score: 74, feedback: 'Needs work' },
+      ],
+    });
+  }),
 ];
