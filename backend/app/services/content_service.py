@@ -21,11 +21,13 @@ _SORTABLE_COLUMNS = {
     "created_at": Content.created_at,
     "authenticity_score": Content.authenticity_score,
     "word_count": Content.word_count,
+    "platform": Content.platform,
+    "status": Content.status,
 }
 
 
 class ContentService:
-    def __init__(self, session: AsyncSession, provider: LLMProvider) -> None:
+    def __init__(self, session: AsyncSession, provider: LLMProvider | None = None) -> None:
         self._session = session
         self._provider = provider
 
@@ -103,8 +105,12 @@ class ContentService:
 
         Raises:
             CloneNotFoundError: If clone doesn't exist.
-            ValueError: If clone has no DNA.
+            ValueError: If clone has no DNA or no provider configured.
         """
+        if self._provider is None:
+            msg = "LLM provider required for content generation"
+            raise ValueError(msg)
+
         await self._get_clone(clone_id)
         dna = await self._get_latest_dna(clone_id)
         methodology = await self._get_methodology()
@@ -151,7 +157,7 @@ class ContentService:
 
     # ── List / Filter ────────────────────────────────────────────
 
-    async def list_content(
+    async def list(
         self,
         *,
         clone_id: str | None = None,

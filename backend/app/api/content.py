@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Annotated, Any, cast
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -19,6 +19,10 @@ from app.models.clone import VoiceClone
 from app.models.dna import VoiceDNAVersion
 from app.models.methodology import MethodologySettings
 from app.schemas.content import (
+    BulkDeleteRequest,
+    BulkResponse,
+    BulkStatusRequest,
+    BulkTagRequest,
     ContentListResponse,
     ContentResponse,
     ContentUpdate,
@@ -26,25 +30,6 @@ from app.schemas.content import (
     ContentVersionResponse,
 )
 from app.services.content_service import ContentService
-
-
-class BulkStatusRequest(BaseModel):
-    ids: list[str] = Field(min_length=1)
-    status: str
-
-
-class BulkDeleteRequest(BaseModel):
-    ids: list[str] = Field(min_length=1)
-
-
-class BulkTagRequest(BaseModel):
-    ids: list[str] = Field(min_length=1)
-    tags: list[str] = Field(min_length=1)
-
-
-class BulkResponse(BaseModel):
-    count: int
-
 
 router = APIRouter(prefix="/content", tags=["content"])
 
@@ -166,19 +151,18 @@ async def stream_generate_content(
 @router.get("", response_model=ContentListResponse)
 async def list_content(
     session: SessionDep,
-    provider: ProviderDep,
     clone_id: str | None = None,
     platform: str | None = None,
     status: str | None = None,
     search: str | None = None,
     sort: str | None = None,
     order: str | None = None,
-    offset: int = 0,
-    limit: int = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> ContentListResponse:
     """List content with optional filters, search, sort, and pagination."""
-    service = ContentService(session, provider)
-    items, total = await service.list_content(
+    service = ContentService(session)
+    items, total = await service.list(
         clone_id=clone_id,
         platform=platform,
         status=status,
@@ -198,10 +182,9 @@ async def list_content(
 async def bulk_update_status(
     body: BulkStatusRequest,
     session: SessionDep,
-    provider: ProviderDep,
 ) -> BulkResponse:
     """Update status for multiple content items."""
-    service = ContentService(session, provider)
+    service = ContentService(session)
     count = await service.bulk_update_status(body.ids, body.status)
     await session.commit()
     return BulkResponse(count=count)
@@ -211,10 +194,9 @@ async def bulk_update_status(
 async def bulk_delete_content(
     body: BulkDeleteRequest,
     session: SessionDep,
-    provider: ProviderDep,
 ) -> BulkResponse:
     """Delete multiple content items."""
-    service = ContentService(session, provider)
+    service = ContentService(session)
     count = await service.bulk_delete(body.ids)
     await session.commit()
     return BulkResponse(count=count)
@@ -224,10 +206,9 @@ async def bulk_delete_content(
 async def bulk_add_tags(
     body: BulkTagRequest,
     session: SessionDep,
-    provider: ProviderDep,
 ) -> BulkResponse:
     """Add tags to multiple content items."""
-    service = ContentService(session, provider)
+    service = ContentService(session)
     count = await service.bulk_add_tags(body.ids, body.tags)
     await session.commit()
     return BulkResponse(count=count)
