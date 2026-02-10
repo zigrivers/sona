@@ -3,7 +3,9 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Toaster } from '@/components/ui/sonner';
+import { CloneDetailPage } from '@/pages/clones/CloneDetailPage';
 import { ClonesPage } from '@/pages/clones/ClonesPage';
+import { CreateClonePage } from '@/pages/clones/CreateClonePage';
 import { CreatePage } from '@/pages/create/CreatePage';
 import { DesignSystemPage } from '@/pages/DesignSystemPage';
 import { LibraryPage } from '@/pages/library/LibraryPage';
@@ -30,8 +32,8 @@ export default function App() {
             <Route path="/" element={<Navigate to="/clones" replace />} />
             {/* Clones */}
             <Route path="/clones" element={<ClonesPage />} />
-            <Route path="/clones/new" element={<ClonesPage />} />
-            <Route path="/clones/:id" element={<ClonesPage />} />
+            <Route path="/clones/new" element={<CreateClonePage />} />
+            <Route path="/clones/:id" element={<CloneDetailPage />} />
             <Route path="/clones/compare" element={<ClonesPage />} />
             <Route path="/clones/merge" element={<ClonesPage />} />
             {/* Content Generator */}
