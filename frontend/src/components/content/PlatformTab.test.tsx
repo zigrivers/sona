@@ -12,8 +12,14 @@ const defaultProps = {
   onTextChange: vi.fn(),
   onSave: vi.fn(),
   onRegenerate: vi.fn(),
+  onCheckScore: vi.fn(),
   isSaving: false,
   isRegenerating: false,
+  isScoring: false,
+  scoreResult: null as null | {
+    overall_score: number;
+    dimensions: { name: string; score: number; feedback: string }[];
+  },
 };
 
 describe('PlatformTab', () => {
@@ -100,5 +106,42 @@ describe('PlatformTab', () => {
     render(<PlatformTab {...defaultProps} />);
     // LinkedIn hints should show
     expect(screen.getByText(/3000 character limit/i)).toBeInTheDocument();
+  });
+
+  it('shows Check Authenticity button', () => {
+    render(<PlatformTab {...defaultProps} />);
+    expect(screen.getByRole('button', { name: /check authenticity/i })).toBeInTheDocument();
+  });
+
+  it('calls onCheckScore when Check Authenticity clicked', async () => {
+    const onCheckScore = vi.fn();
+    const user = userEvent.setup();
+    render(<PlatformTab {...defaultProps} onCheckScore={onCheckScore} />);
+    await user.click(screen.getByRole('button', { name: /check authenticity/i }));
+    expect(onCheckScore).toHaveBeenCalledOnce();
+  });
+
+  it('shows score result when available', () => {
+    render(
+      <PlatformTab
+        {...defaultProps}
+        scoreResult={{
+          overall_score: 78,
+          dimensions: [
+            { name: 'Vocabulary', score: 80, feedback: 'Good match' },
+            { name: 'Tone', score: 45, feedback: 'Needs work' },
+          ],
+        }}
+      />
+    );
+    expect(screen.getByText('78')).toBeInTheDocument();
+    expect(screen.getByText('Vocabulary')).toBeInTheDocument();
+    expect(screen.getByText('Tone')).toBeInTheDocument();
+  });
+
+  it('shows loading state when scoring', () => {
+    render(<PlatformTab {...defaultProps} isScoring={true} />);
+    const button = screen.getByRole('button', { name: /check authenticity/i });
+    expect(button).toBeDisabled();
   });
 });

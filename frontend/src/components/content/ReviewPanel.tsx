@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useRegenerateContent, useUpdateContent } from '@/hooks/use-content';
-import type { ContentResponse } from '@/types/api';
+import { useRegenerateContent, useScoreContent, useUpdateContent } from '@/hooks/use-content';
+import type { AuthenticityScoreResponse, ContentResponse } from '@/types/api';
 import { type PlatformKey, PLATFORMS } from '@/types/platforms';
 
 import { PlatformTab } from './PlatformTab';
@@ -27,8 +27,11 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
     return initial;
   });
 
+  const [scoreResults, setScoreResults] = useState<Record<string, AuthenticityScoreResponse>>({});
+
   const updateMutation = useUpdateContent();
   const regenerateMutation = useRegenerateContent();
+  const scoreMutation = useScoreContent();
 
   function handleTextChange(contentId: string, text: string) {
     setEditedContent((prev) => ({ ...prev, [contentId]: text }));
@@ -47,6 +50,14 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
         },
       }
     );
+  }
+
+  function handleCheckScore(item: ContentResponse) {
+    scoreMutation.mutate(item.id, {
+      onSuccess: (data) => {
+        setScoreResults((prev) => ({ ...prev, [item.id]: data }));
+      },
+    });
   }
 
   function handleRegenerate(item: ContentResponse) {
@@ -92,8 +103,11 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
             onTextChange={(text) => handleTextChange(item.id, text)}
             onSave={() => handleSave(item)}
             onRegenerate={() => handleRegenerate(item)}
+            onCheckScore={() => handleCheckScore(item)}
             isSaving={updateMutation.isPending}
             isRegenerating={regenerateMutation.isPending}
+            isScoring={scoreMutation.isPending}
+            scoreResult={scoreResults[item.id] ?? null}
           />
         </TabsContent>
       ))}

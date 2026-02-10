@@ -1,4 +1,4 @@
-import { Loader2, RefreshCw, Save } from 'lucide-react';
+import { Loader2, RefreshCw, Save, Shield } from 'lucide-react';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -14,8 +14,11 @@ import {
   splitIntoThread,
 } from '@/lib/platforms';
 import { cn } from '@/lib/utils';
-import type { ContentResponse } from '@/types/api';
+import type { AuthenticityScoreResponse, ContentResponse } from '@/types/api';
 import { type PlatformKey, PLATFORMS } from '@/types/platforms';
+
+import { AuthenticityScore } from './AuthenticityScore';
+import { DimensionBreakdown } from './DimensionBreakdown';
 
 interface PlatformTabProps {
   content: ContentResponse;
@@ -23,8 +26,11 @@ interface PlatformTabProps {
   onTextChange: (text: string) => void;
   onSave: () => void;
   onRegenerate: () => void;
+  onCheckScore: () => void;
   isSaving: boolean;
   isRegenerating: boolean;
+  isScoring: boolean;
+  scoreResult: AuthenticityScoreResponse | null;
 }
 
 export function PlatformTab({
@@ -33,8 +39,11 @@ export function PlatformTab({
   onTextChange,
   onSave,
   onRegenerate,
+  onCheckScore,
   isSaving,
   isRegenerating,
+  isScoring,
+  scoreResult,
 }: PlatformTabProps) {
   const [showThread, setShowThread] = useState(false);
 
@@ -101,6 +110,16 @@ export function PlatformTab({
         </div>
       )}
 
+      {/* Authenticity score */}
+      {scoreResult && (
+        <Card>
+          <CardContent className="space-y-3 py-3">
+            <AuthenticityScore overallScore={scoreResult.overall_score} />
+            <DimensionBreakdown dimensions={scoreResult.dimensions} />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Action buttons */}
       <div className="flex gap-2">
         <Button onClick={onSave} disabled={isSaving}>
@@ -114,6 +133,10 @@ export function PlatformTab({
             <RefreshCw className="size-4" />
           )}
           Regenerate
+        </Button>
+        <Button variant="outline" onClick={onCheckScore} disabled={isScoring}>
+          {isScoring ? <Loader2 className="size-4 animate-spin" /> : <Shield className="size-4" />}
+          Check Authenticity
         </Button>
       </div>
     </div>
