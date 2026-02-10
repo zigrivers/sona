@@ -1,5 +1,6 @@
 import type { ColumnDef } from '@tanstack/react-table';
 
+import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { ContentResponse } from '@/types/api';
 import { PLATFORMS } from '@/types/platforms';
@@ -38,9 +39,19 @@ export const columns: ColumnDef<ContentRow>[] = [
     accessorKey: 'content_current',
     header: 'Content',
     enableSorting: false,
-    cell: ({ getValue }) => {
+    cell: ({ row, getValue }) => {
       const text = getValue<string>();
-      return <span className="text-sm">{text.length > 100 ? `${text.slice(0, 100)}…` : text}</span>;
+      const isImported = row.original.generation_properties?.source === 'import';
+      return (
+        <span className="text-sm">
+          {isImported && (
+            <Badge variant="outline" className="mr-2">
+              Imported
+            </Badge>
+          )}
+          {text.length > 100 ? `${text.slice(0, 100)}…` : text}
+        </span>
+      );
     },
   },
   {

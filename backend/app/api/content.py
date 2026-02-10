@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Annotated, Any, cast
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Form, Query, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -23,6 +23,7 @@ from app.schemas.content import (
     BulkResponse,
     BulkStatusRequest,
     BulkTagRequest,
+    ContentImport,
     ContentListResponse,
     ContentResponse,
     ContentUpdate,
@@ -35,6 +36,7 @@ from app.schemas.detection import DetectionResponse
 from app.schemas.scoring import AuthenticityScoreResponse
 from app.services.content_service import ContentService
 from app.services.detection_service import DetectionService
+from app.services.file_parser import parse_file
 from app.services.scoring_service import ScoringService
 
 router = APIRouter(prefix="/content", tags=["content"])
@@ -182,6 +184,55 @@ async def list_content(
         items=[ContentResponse.model_validate(c) for c in items],
         total=total,
     )
+
+
+@router.post("/import", response_model=ContentResponse, status_code=201)
+async def import_content(
+    body: ContentImport,
+    session: SessionDep,
+) -> ContentResponse:
+    """Import existing content as a draft."""
+    service = ContentService(session)
+    content = await service.import_content(
+        clone_id=body.clone_id,
+        platform=body.platform,
+        content_text=body.content_text,
+        topic=body.topic,
+        campaign=body.campaign,
+        tags=body.tags,
+    )
+    await session.commit()
+    return ContentResponse.model_validate(content)
+
+
+@router.post("/import/upload", response_model=ContentResponse, status_code=201)
+async def import_content_upload(
+    file: UploadFile,
+    clone_id: Annotated[str, Form()],
+    platform: Annotated[str, Form()],
+    session: SessionDep,
+) -> ContentResponse | JSONResponse:
+    """Import content from an uploaded file."""
+    try:
+        content_text = await parse_file(
+            file.file,
+            filename=file.filename or "unknown",
+            content_type=file.content_type or "application/octet-stream",
+        )
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=422,
+            content={"detail": str(exc), "code": "UNSUPPORTED_FILE"},
+        )
+
+    service = ContentService(session)
+    content = await service.import_content(
+        clone_id=clone_id,
+        platform=platform,
+        content_text=content_text,
+    )
+    await session.commit()
+    return ContentResponse.model_validate(content)
 
 
 @router.post("/bulk/status", response_model=BulkResponse)

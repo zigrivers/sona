@@ -164,4 +164,31 @@ export const contentHandlers = [
       summary: 'Some AI-like patterns detected.',
     });
   }),
+
+  http.post('/api/content/import', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(
+      buildContentItem({
+        id: 'content-imported',
+        clone_id: (body.clone_id as string) ?? 'clone-1',
+        platform: (body.platform as string) ?? 'blog',
+        content_current: (body.content_text as string) ?? 'Imported content.',
+        content_original: (body.content_text as string) ?? 'Imported content.',
+        input_text: '[Imported]',
+        generation_properties: { source: 'import' },
+      }),
+      { status: 201 }
+    );
+  }),
+
+  http.post('/api/content/import/upload', async () => {
+    return HttpResponse.json(
+      buildContentItem({
+        id: 'content-uploaded',
+        input_text: '[Imported]',
+        generation_properties: { source: 'import' },
+      }),
+      { status: 201 }
+    );
+  }),
 ];
