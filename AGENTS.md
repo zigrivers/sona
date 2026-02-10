@@ -24,7 +24,7 @@ bd sync               # Sync with git
    ```bash
    git push -u origin HEAD               # Push your feature branch (never push to main)
    gh pr create --title "[BD-xxx] type(scope): desc" --body "..."
-   gh pr merge --squash --auto --subject "[BD-xxx] type(scope): desc"
+   gh pr merge --squash --auto --delete-branch
    ```
 4. **Watch CI until it passes**:
    ```bash
@@ -40,7 +40,7 @@ bd sync               # Sync with git
    ```bash
    git checkout agent-N-home                # Worktree: park on home branch
    git branch -d bd-<task-id>/<short-desc>  # Delete local feature branch
-   git fetch origin                         # Get latest main for next task
+   git fetch origin --prune                  # Get latest main, remove stale remote refs
    ```
 8. **Verify** - No uncommitted changes, no unpushed feature branches
 9. **Hand off** - Provide context for next session
