@@ -20,15 +20,15 @@ function Command({ className, ...props }: React.ComponentProps<typeof CommandPri
   );
 }
 
-function CommandDialog({
-  children,
-  ...props
-}: React.ComponentProps<typeof DialogPrimitive.Root>) {
+function CommandDialog({ children, ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
   return (
     <DialogPrimitive.Root {...props}>
       <DialogPrimitive.Portal>
         <DialogOverlay />
-        <DialogPrimitive.Content aria-describedby={undefined} className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%] rounded-lg border shadow-lg duration-200">
+        <DialogPrimitive.Content
+          aria-describedby={undefined}
+          className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%] rounded-lg border shadow-lg duration-200"
+        >
           <DialogPrimitive.Title>
             <VisuallyHidden.Root>Command palette</VisuallyHidden.Root>
           </DialogPrimitive.Title>
@@ -60,14 +60,11 @@ function CommandInput({
   );
 }
 
-function CommandList({
-  className,
-  ...props
-}: React.ComponentProps<typeof CommandPrimitive.List>) {
+function CommandList({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.List>) {
   return (
     <CommandPrimitive.List
       data-slot="command-list"
-      className={cn('max-h-[300px] overflow-y-auto overflow-x-hidden', className)}
+      className={cn('max-h-[300px] overflow-x-hidden overflow-y-auto', className)}
       {...props}
     />
   );
@@ -75,7 +72,11 @@ function CommandList({
 
 function CommandEmpty({ ...props }: React.ComponentProps<typeof CommandPrimitive.Empty>) {
   return (
-    <CommandPrimitive.Empty data-slot="command-empty" className="py-6 text-center text-sm" {...props} />
+    <CommandPrimitive.Empty
+      data-slot="command-empty"
+      className="py-6 text-center text-sm"
+      {...props}
+    />
   );
 }
 
@@ -108,10 +109,7 @@ function CommandSeparator({
   );
 }
 
-function CommandItem({
-  className,
-  ...props
-}: React.ComponentProps<typeof CommandPrimitive.Item>) {
+function CommandItem({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Item>) {
   return (
     <CommandPrimitive.Item
       data-slot="command-item"

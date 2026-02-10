@@ -62,10 +62,7 @@ export function CommandPalette() {
         {clones.length > 0 && (
           <CommandGroup heading="Clones">
             {clones.map((clone) => (
-              <CommandItem
-                key={clone.id}
-                onSelect={() => handleSelect(`/clones/${clone.id}`)}
-              >
+              <CommandItem key={clone.id} onSelect={() => handleSelect(`/clones/${clone.id}`)}>
                 <UsersIcon className="mr-2 size-4" />
                 {clone.name}
               </CommandItem>

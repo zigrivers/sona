@@ -62,11 +62,7 @@ describe('CommandPalette', () => {
 
   it('shows clones from API', async () => {
     const clone = buildClone({ name: 'Marketing Voice' });
-    server.use(
-      http.get('/api/clones', () =>
-        HttpResponse.json({ items: [clone], total: 1 })
-      )
-    );
+    server.use(http.get('/api/clones', () => HttpResponse.json({ items: [clone], total: 1 })));
     useUIStore.setState({ commandPaletteOpen: true });
     renderWithProviders(<CommandPalette />);
 
