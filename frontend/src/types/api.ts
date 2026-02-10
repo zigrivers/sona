@@ -175,6 +175,25 @@ export const DatabaseStatsResponseSchema = z.object({
 
 export type DatabaseStatsResponse = z.infer<typeof DatabaseStatsResponseSchema>;
 
+// ── Content Version ────────────────────────────────────────────────
+
+export const ContentVersionResponseSchema = z.object({
+  id: z.string(),
+  version_number: z.number().int(),
+  content_text: z.string(),
+  trigger: z.string(),
+  word_count: z.number().int(),
+  created_at: z.string(),
+});
+
+export type ContentVersionResponse = z.infer<typeof ContentVersionResponseSchema>;
+
+export const ContentVersionListResponseSchema = z.object({
+  items: z.array(ContentVersionResponseSchema),
+});
+
+export type ContentVersionListResponse = z.infer<typeof ContentVersionListResponseSchema>;
+
 // ── Scoring ────────────────────────────────────────────────────────
 
 export const DimensionScoreSchema = z.object({

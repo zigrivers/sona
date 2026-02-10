@@ -90,4 +90,44 @@ export const contentHandlers = [
       ],
     });
   }),
+
+  http.get('/api/content/:id/versions', () => {
+    return HttpResponse.json({
+      items: [
+        {
+          id: 'ver-3',
+          version_number: 3,
+          content_text: 'Latest edited content.',
+          trigger: 'inline_edit',
+          word_count: 50,
+          created_at: NOW,
+        },
+        {
+          id: 'ver-2',
+          version_number: 2,
+          content_text: 'Regenerated content.',
+          trigger: 'regeneration',
+          word_count: 35,
+          created_at: NOW,
+        },
+        {
+          id: 'ver-1',
+          version_number: 1,
+          content_text: 'Original generated content.',
+          trigger: 'generation',
+          word_count: 20,
+          created_at: NOW,
+        },
+      ],
+    });
+  }),
+
+  http.post('/api/content/:id/restore/:version', ({ params }) => {
+    return HttpResponse.json(
+      buildContentItem({
+        id: params.id as string,
+        content_current: 'Restored content.',
+      })
+    );
+  }),
 ];
