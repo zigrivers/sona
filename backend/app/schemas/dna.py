@@ -34,3 +34,7 @@ class DNAVersionResponse(BaseModel):
 
 class DNAVersionListResponse(BaseModel):
     items: list[DNAVersionResponse]
+
+
+class DNAPromptResponse(BaseModel):
+    prompt: str

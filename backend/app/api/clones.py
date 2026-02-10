@@ -10,7 +10,12 @@ from app.api.deps import get_llm_provider, get_session
 from app.exceptions import AnalysisFailedError, CloneNotFoundError, MergeFailedError
 from app.models.clone import VoiceClone
 from app.schemas.clone import CloneCreate, CloneListResponse, CloneResponse, CloneUpdate
-from app.schemas.dna import DNAResponse, DNAVersionListResponse, DNAVersionResponse
+from app.schemas.dna import (
+    DNAPromptResponse,
+    DNAResponse,
+    DNAVersionListResponse,
+    DNAVersionResponse,
+)
 from app.services.clone_service import CloneService
 from app.services.dna_service import DNAService
 from app.services.merge_service import MergeService
@@ -184,6 +189,16 @@ async def get_dna(clone_id: str, session: Session) -> DNAResponse:
     if dna is None:
         raise HTTPException(status_code=404, detail="No DNA found for this clone")
     return DNAResponse.model_validate(dna, from_attributes=True)
+
+
+@router.get("/{clone_id}/dna/prompt")
+async def get_dna_prompt(clone_id: str, session: Session) -> DNAPromptResponse:
+    svc = DNAService(session)
+    dna = await svc.get_current(clone_id)
+    if dna is None:
+        raise HTTPException(status_code=404, detail="No DNA found for this clone")
+    prompt = DNAService.export_as_prompt(cast(dict[str, Any], dna.data))  # pyright: ignore[reportUnknownMemberType]
+    return DNAPromptResponse(prompt=prompt)
 
 
 @router.get("/{clone_id}/dna/versions")

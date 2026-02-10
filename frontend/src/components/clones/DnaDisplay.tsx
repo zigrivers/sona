@@ -10,6 +10,7 @@ import { useAnalyzeDna, useDna, useDnaVersions, useUpdateDna } from '@/hooks/use
 
 import { DNA_CATEGORIES } from './dna-categories';
 import { DnaCategorySection } from './DnaCategorySection';
+import { DnaExport } from './DnaExport';
 import { DnaTimeline } from './DnaTimeline';
 import { DnaVersionHistory } from './DnaVersionHistory';
 
@@ -86,6 +87,7 @@ export function DnaDisplay({ cloneId }: DnaDisplayProps) {
         {consistencyScore !== undefined && (
           <Badge variant="outline">Consistency: {String(consistencyScore)}%</Badge>
         )}
+        <DnaExport cloneId={cloneId} />
       </div>
 
       <Accordion type="multiple">

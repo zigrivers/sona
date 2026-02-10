@@ -430,6 +430,43 @@ class TestPruning:
         assert len(versions) == 10
 
 
+class TestExportAsPrompt:
+    def test_export_generates_readable_prompt(self) -> None:
+        """export_as_prompt returns a string starting with 'Write in a style that'."""
+        data = {
+            "vocabulary": {"complexity_level": "intermediate", "jargon_usage": "moderate"},
+            "tone": {"formality_level": "semi-formal", "primary_tone": "conversational"},
+        }
+        result = DNAService.export_as_prompt(data)
+        assert result.startswith("Write in a style that")
+
+    def test_prompt_includes_key_characteristics(self) -> None:
+        """export_as_prompt includes actual field values from the DNA data."""
+        data = {
+            "vocabulary": {"complexity_level": "intermediate", "jargon_usage": "moderate"},
+            "sentence_structure": {"average_length": "medium"},
+            "tone": {"formality_level": "semi-formal", "primary_tone": "conversational"},
+            "signatures": {"catchphrases": ["Let me tell you", "Here is the thing"]},
+        }
+        result = DNAService.export_as_prompt(data)
+        assert "intermediate" in result
+        assert "moderate" in result
+        assert "semi-formal" in result
+        assert "conversational" in result
+        assert "Let me tell you" in result
+        assert "Here is the thing" in result
+
+    def test_export_handles_missing_categories(self) -> None:
+        """export_as_prompt gracefully skips missing categories."""
+        data = {
+            "vocabulary": {"complexity_level": "advanced"},
+        }
+        result = DNAService.export_as_prompt(data)
+        assert "advanced" in result
+        # Should not crash or include empty sections for missing categories
+        assert "Tone" not in result
+
+
 class TestListVersions:
     async def test_returns_versions_descending(self, session: AsyncSession) -> None:
         """list_versions returns versions ordered by version_number desc."""
