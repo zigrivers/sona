@@ -29,6 +29,48 @@ export const sampleHandlers = [
     );
   }),
 
+  http.post('/api/clones/:cloneId/samples/upload', async ({ request }) => {
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    const contentType = (formData.get('content_type') as string) ?? 'blog_post';
+    return HttpResponse.json(
+      {
+        id: 'sample-upload',
+        clone_id: 'clone-1',
+        content: file ? `[uploaded: ${file.name}]` : '',
+        content_type: contentType,
+        content_type_detected: null,
+        word_count: 0,
+        length_category: null,
+        source_type: 'file',
+        source_url: null,
+        source_filename: file?.name ?? null,
+        created_at: NOW,
+      },
+      { status: 201 }
+    );
+  }),
+
+  http.post('/api/clones/:cloneId/samples/url', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(
+      {
+        id: 'sample-url',
+        clone_id: 'clone-1',
+        content: `[scraped from ${body.url}]`,
+        content_type: body.content_type ?? 'blog_post',
+        content_type_detected: null,
+        word_count: 0,
+        length_category: null,
+        source_type: 'url',
+        source_url: body.url ?? null,
+        source_filename: null,
+        created_at: NOW,
+      },
+      { status: 201 }
+    );
+  }),
+
   http.delete('/api/clones/:cloneId/samples/:sampleId', () => {
     return new HttpResponse(null, { status: 204 });
   }),

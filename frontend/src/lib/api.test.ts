@@ -87,6 +87,44 @@ describe('api.put', () => {
   });
 });
 
+describe('api.upload', () => {
+  it('sends FormData with POST request without Content-Type header', async () => {
+    const responseData = { id: '1', filename: 'test.txt' };
+    mockFetch.mockResolvedValueOnce(jsonResponse(responseData));
+
+    const formData = new FormData();
+    formData.append('file', new Blob(['hello']), 'test.txt');
+
+    const result = await api.upload('/api/upload', formData);
+
+    expect(mockFetch).toHaveBeenCalledWith('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    expect(result).toEqual(responseData);
+  });
+
+  it('throws ApiError on failure response', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ detail: 'File too large', code: 'FILE_TOO_LARGE' }, 413)
+    );
+
+    const formData = new FormData();
+    formData.append('file', new Blob(['hello']), 'test.txt');
+
+    try {
+      await api.upload('/api/upload', formData);
+      expect.unreachable('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError);
+      const apiErr = err as ApiError;
+      expect(apiErr.status).toBe(413);
+      expect(apiErr.detail).toBe('File too large');
+      expect(apiErr.code).toBe('FILE_TOO_LARGE');
+    }
+  });
+});
+
 describe('api.delete', () => {
   it('sends DELETE request and returns void', async () => {
     mockFetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
