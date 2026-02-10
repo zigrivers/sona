@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, cast
 
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.exceptions import CloneNotFoundError, ContentNotFoundError
@@ -16,6 +16,12 @@ from app.models.content import Content, ContentVersion
 from app.models.dna import VoiceDNAVersion
 from app.models.methodology import MethodologySettings
 from app.schemas.content import ContentUpdate
+
+_SORTABLE_COLUMNS = {
+    "created_at": Content.created_at,
+    "authenticity_score": Content.authenticity_score,
+    "word_count": Content.word_count,
+}
 
 
 class ContentService:
@@ -142,6 +148,78 @@ class ContentService:
             results.append(content)
 
         return results
+
+    # ── List / Filter ────────────────────────────────────────────
+
+    async def list_content(
+        self,
+        *,
+        clone_id: str | None = None,
+        platform: str | None = None,
+        status: str | None = None,
+        search: str | None = None,
+        sort: str | None = None,
+        order: str | None = None,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[Content], int]:
+        """Return filtered, sorted, paginated content list with total count."""
+        query = select(Content)
+
+        if clone_id:
+            query = query.where(Content.clone_id == clone_id)
+        if platform:
+            query = query.where(Content.platform == platform)
+        if status:
+            query = query.where(Content.status == status)
+        if search:
+            query = query.where(Content.content_current.ilike(f"%{search}%"))
+
+        # Count
+        count_query = select(func.count()).select_from(query.subquery())
+        total = (await self._session.execute(count_query)).scalar_one()
+
+        # Sort
+        sort_col = _SORTABLE_COLUMNS.get(sort or "created_at", Content.created_at)
+        if order == "asc":
+            query = query.order_by(sort_col.asc())
+        else:
+            query = query.order_by(sort_col.desc())
+
+        # Paginate
+        query = query.offset(offset).limit(limit)
+
+        result = await self._session.execute(query)
+        return list(result.scalars().all()), total
+
+    # ── Bulk Operations ────────────────────────────────────────
+
+    async def bulk_update_status(self, ids: list[str], status: str) -> int:
+        """Update status for multiple content items. Returns count updated."""
+        stmt = update(Content).where(Content.id.in_(ids)).values(status=status)
+        result = await self._session.execute(stmt)
+        await self._session.flush()
+        return result.rowcount  # type: ignore[return-value]
+
+    async def bulk_delete(self, ids: list[str]) -> int:
+        """Delete multiple content items. Returns count deleted."""
+        result = await self._session.execute(select(Content).where(Content.id.in_(ids)))
+        items = list(result.scalars().all())
+        for item in items:
+            await self._session.delete(item)
+        await self._session.flush()
+        return len(items)
+
+    async def bulk_add_tags(self, ids: list[str], tags: list[str]) -> int:
+        """Add tags to multiple content items (merges, no duplicates). Returns count updated."""
+        result = await self._session.execute(select(Content).where(Content.id.in_(ids)))
+        items = list(result.scalars().all())
+        for item in items:
+            existing: list[str] = list(item.tags) if item.tags else []  # pyright: ignore[reportUnknownArgumentType,reportUnknownMemberType]
+            merged: list[str] = list(dict.fromkeys(existing + tags))
+            item.tags = merged  # type: ignore[assignment]
+        await self._session.flush()
+        return len(items)
 
     # ── CRUD ──────────────────────────────────────────────────────
 

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_llm_provider
 from app.main import app
 from app.models.clone import VoiceClone
+from app.models.content import Content
 from app.models.dna import VoiceDNAVersion
 
 
@@ -343,3 +344,219 @@ class TestContentVersionEndpoints:
 
         response = await client.post(f"/api/content/{item['id']}/restore/999")
         assert response.status_code == 400
+
+
+async def _create_content_row(
+    session: AsyncSession,
+    clone: VoiceClone,
+    *,
+    platform: str = "blog",
+    status: str = "draft",
+    content_text: str = "Default content.",
+    authenticity_score: int | None = None,
+    tags: list[str] | None = None,
+) -> Content:
+    """Create a Content row directly for filter/list API tests."""
+    from app.models.content import Content as ContentModel
+
+    content = ContentModel(
+        clone_id=clone.id,
+        platform=platform,
+        status=status,
+        content_current=content_text,
+        content_original=content_text,
+        input_text="test input",
+        authenticity_score=authenticity_score,
+        tags=tags or [],
+        word_count=len(content_text.split()),
+        char_count=len(content_text),
+    )
+    session.add(content)
+    await session.commit()
+    return content
+
+
+class TestListEndpoint:
+    async def test_list_content_200(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+    ) -> None:
+        """GET /api/content should return paginated list."""
+        clone = await _create_clone_with_dna(session)
+        await _create_content_row(session, clone, content_text="First")
+        await _create_content_row(session, clone, content_text="Second")
+
+        response = await client.get("/api/content")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 2
+        assert len(data["items"]) == 2
+
+    async def test_list_filter_by_clone(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+    ) -> None:
+        """GET /api/content?clone_id=X should filter by clone."""
+        clone_a = await _create_clone_with_dna(session)
+        clone_b = VoiceClone(name="Clone B")
+        session.add(clone_b)
+        await session.flush()
+        dna_b = VoiceDNAVersion(
+            clone_id=clone_b.id,
+            version_number=1,
+            data={"tone": "formal"},
+            trigger="initial_analysis",
+            model_used="test",
+        )
+        session.add(dna_b)
+        await session.commit()
+
+        await _create_content_row(session, clone_a, content_text="A content")
+        await _create_content_row(session, clone_b, content_text="B content")
+
+        response = await client.get(f"/api/content?clone_id={clone_a.id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["clone_id"] == clone_a.id
+
+    async def test_list_filter_by_platform(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+    ) -> None:
+        """GET /api/content?platform=linkedin should filter by platform."""
+        clone = await _create_clone_with_dna(session)
+        await _create_content_row(session, clone, platform="linkedin")
+        await _create_content_row(session, clone, platform="twitter")
+
+        response = await client.get("/api/content?platform=linkedin")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["platform"] == "linkedin"
+
+    async def test_list_filter_by_status(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+    ) -> None:
+        """GET /api/content?status=draft should filter by status."""
+        clone = await _create_clone_with_dna(session)
+        await _create_content_row(session, clone, status="draft")
+        await _create_content_row(session, clone, status="published")
+
+        response = await client.get("/api/content?status=draft")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["status"] == "draft"
+
+    async def test_list_search(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+    ) -> None:
+        """GET /api/content?search=keyword should search content_current."""
+        clone = await _create_clone_with_dna(session)
+        await _create_content_row(session, clone, content_text="Machine learning rocks")
+        await _create_content_row(session, clone, content_text="Cooking tips")
+
+        response = await client.get("/api/content?search=machine")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+
+    async def test_list_sort_by_score(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+    ) -> None:
+        """GET /api/content?sort=authenticity_score&order=desc should sort by score."""
+        clone = await _create_clone_with_dna(session)
+        await _create_content_row(session, clone, authenticity_score=50)
+        await _create_content_row(session, clone, authenticity_score=90)
+
+        response = await client.get("/api/content?sort=authenticity_score&order=desc")
+        assert response.status_code == 200
+        data = response.json()
+        scores = [item["authenticity_score"] for item in data["items"]]
+        assert scores == [90, 50]
+
+    async def test_list_combined_filters(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+    ) -> None:
+        """GET /api/content with multiple filters uses AND logic."""
+        clone = await _create_clone_with_dna(session)
+        await _create_content_row(session, clone, platform="linkedin", status="draft")
+        await _create_content_row(session, clone, platform="linkedin", status="published")
+        await _create_content_row(session, clone, platform="twitter", status="draft")
+
+        response = await client.get("/api/content?platform=linkedin&status=draft")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+
+
+class TestBulkEndpoints:
+    async def test_bulk_status_update(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+    ) -> None:
+        """POST /api/content/bulk/status should update status for given ids."""
+        clone = await _create_clone_with_dna(session)
+        c1 = await _create_content_row(session, clone, status="draft")
+        c2 = await _create_content_row(session, clone, status="draft")
+
+        response = await client.post(
+            "/api/content/bulk/status",
+            json={"ids": [c1.id, c2.id], "status": "review"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 2
+
+    async def test_bulk_delete(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+    ) -> None:
+        """POST /api/content/bulk/delete should delete specified content items."""
+        clone = await _create_clone_with_dna(session)
+        c1 = await _create_content_row(session, clone)
+        c2 = await _create_content_row(session, clone)
+
+        response = await client.post(
+            "/api/content/bulk/delete",
+            json={"ids": [c1.id, c2.id]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 2
+
+        # Verify deleted
+        response = await client.get(f"/api/content/{c1.id}")
+        assert response.status_code == 404
+
+    async def test_bulk_tag_add(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+    ) -> None:
+        """POST /api/content/bulk/tag should add tags to specified content items."""
+        clone = await _create_clone_with_dna(session)
+        c1 = await _create_content_row(session, clone, tags=["existing"])
+        c2 = await _create_content_row(session, clone)
+
+        response = await client.post(
+            "/api/content/bulk/tag",
+            json={"ids": [c1.id, c2.id], "tags": ["new-tag"]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 2

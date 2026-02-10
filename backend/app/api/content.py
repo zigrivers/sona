@@ -19,12 +19,32 @@ from app.models.clone import VoiceClone
 from app.models.dna import VoiceDNAVersion
 from app.models.methodology import MethodologySettings
 from app.schemas.content import (
+    ContentListResponse,
     ContentResponse,
     ContentUpdate,
     ContentVersionListResponse,
     ContentVersionResponse,
 )
 from app.services.content_service import ContentService
+
+
+class BulkStatusRequest(BaseModel):
+    ids: list[str] = Field(min_length=1)
+    status: str
+
+
+class BulkDeleteRequest(BaseModel):
+    ids: list[str] = Field(min_length=1)
+
+
+class BulkTagRequest(BaseModel):
+    ids: list[str] = Field(min_length=1)
+    tags: list[str] = Field(min_length=1)
+
+
+class BulkResponse(BaseModel):
+    count: int
+
 
 router = APIRouter(prefix="/content", tags=["content"])
 
@@ -141,6 +161,76 @@ async def stream_generate_content(
         event_generator(),
         media_type="text/event-stream",
     )
+
+
+@router.get("", response_model=ContentListResponse)
+async def list_content(
+    session: SessionDep,
+    provider: ProviderDep,
+    clone_id: str | None = None,
+    platform: str | None = None,
+    status: str | None = None,
+    search: str | None = None,
+    sort: str | None = None,
+    order: str | None = None,
+    offset: int = 0,
+    limit: int = 50,
+) -> ContentListResponse:
+    """List content with optional filters, search, sort, and pagination."""
+    service = ContentService(session, provider)
+    items, total = await service.list_content(
+        clone_id=clone_id,
+        platform=platform,
+        status=status,
+        search=search,
+        sort=sort,
+        order=order,
+        offset=offset,
+        limit=limit,
+    )
+    return ContentListResponse(
+        items=[ContentResponse.model_validate(c) for c in items],
+        total=total,
+    )
+
+
+@router.post("/bulk/status", response_model=BulkResponse)
+async def bulk_update_status(
+    body: BulkStatusRequest,
+    session: SessionDep,
+    provider: ProviderDep,
+) -> BulkResponse:
+    """Update status for multiple content items."""
+    service = ContentService(session, provider)
+    count = await service.bulk_update_status(body.ids, body.status)
+    await session.commit()
+    return BulkResponse(count=count)
+
+
+@router.post("/bulk/delete", response_model=BulkResponse)
+async def bulk_delete_content(
+    body: BulkDeleteRequest,
+    session: SessionDep,
+    provider: ProviderDep,
+) -> BulkResponse:
+    """Delete multiple content items."""
+    service = ContentService(session, provider)
+    count = await service.bulk_delete(body.ids)
+    await session.commit()
+    return BulkResponse(count=count)
+
+
+@router.post("/bulk/tag", response_model=BulkResponse)
+async def bulk_add_tags(
+    body: BulkTagRequest,
+    session: SessionDep,
+    provider: ProviderDep,
+) -> BulkResponse:
+    """Add tags to multiple content items."""
+    service = ContentService(session, provider)
+    count = await service.bulk_add_tags(body.ids, body.tags)
+    await session.commit()
+    return BulkResponse(count=count)
 
 
 @router.get("/{content_id}", response_model=ContentResponse)
