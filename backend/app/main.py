@@ -21,6 +21,7 @@ STATUS_MAP: dict[str, int] = {
     "LLM_NETWORK_ERROR": 502,
     "LLM_QUOTA_ERROR": 402,
     "VALIDATION_ERROR": 422,
+    "DEMO_CLONE_READONLY": 400,
 }
 
 

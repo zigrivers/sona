@@ -76,3 +76,11 @@ class LLMQuotaError(SonaError):
     ) -> None:
         msg = detail or f"Quota exceeded for provider '{provider}'"
         super().__init__(detail=msg, code=code)
+
+
+class DemoCloneReadonlyError(SonaError):
+    def __init__(self, clone_id: str) -> None:
+        super().__init__(
+            detail=f"Demo clone '{clone_id}' cannot be modified or deleted",
+            code="DEMO_CLONE_READONLY",
+        )
