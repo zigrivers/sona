@@ -13,6 +13,7 @@ from app.schemas.clone import CloneCreate, CloneListResponse, CloneResponse, Clo
 from app.schemas.dna import DNAResponse, DNAVersionListResponse, DNAVersionResponse
 from app.services.clone_service import CloneService
 from app.services.dna_service import DNAService
+from app.services.scoring_service import calculate_confidence
 
 router = APIRouter(prefix="/clones", tags=["clones"])
 
@@ -35,7 +36,7 @@ def _to_response(clone: VoiceClone) -> CloneResponse:
             "created_at": clone.created_at,
             "updated_at": clone.updated_at,
             "sample_count": len(clone.samples),
-            "confidence_score": 0,
+            "confidence_score": calculate_confidence(clone),
         }
     )
 

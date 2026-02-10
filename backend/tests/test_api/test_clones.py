@@ -4,6 +4,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.clone import VoiceClone
+from app.models.sample import WritingSample
 
 
 async def _create_clone(
@@ -121,3 +122,27 @@ async def test_delete_demo_clone_rejected(client: AsyncClient, session: AsyncSes
 
     assert response.status_code == 400
     assert response.json()["code"] == "DEMO_CLONE_READONLY"
+
+
+async def test_confidence_score_nonzero_with_samples(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    """GET /api/clones/{id} should return a non-zero confidence score when samples exist."""
+    clone = await _create_clone(session, name="Scored Clone")
+    sample = WritingSample(
+        clone_id=clone.id,
+        content="Hello world " * 100,
+        content_type="blog",
+        word_count=200,
+        length_category="medium",
+        source_type="paste",
+    )
+    session.add(sample)
+    await session.commit()
+
+    response = await client.get(f"/api/clones/{clone.id}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["confidence_score"] > 0
+    assert data["sample_count"] == 1
