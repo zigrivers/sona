@@ -109,5 +109,14 @@ class PartialRegenRequest(BaseModel):
     feedback: str | None = None
 
 
+class ContentImport(BaseModel):
+    clone_id: str
+    platform: Platform
+    content_text: str = Field(min_length=1)
+    topic: str | None = None
+    campaign: str | None = None
+    tags: list[str] = Field(default_factory=list)
+
+
 class BulkResponse(BaseModel):
     count: int

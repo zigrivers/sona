@@ -238,6 +238,59 @@ describe('LibraryPage', () => {
     expect(screen.getByText('1 selected')).toBeInTheDocument();
   });
 
+  it('renders Import button', async () => {
+    mockContentAndClones();
+    renderWithProviders(<LibraryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Short content for LinkedIn.')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: /import/i })).toBeInTheDocument();
+  });
+
+  it('Import button opens ImportDialog', async () => {
+    mockContentAndClones();
+    const user = userEvent.setup();
+    renderWithProviders(<LibraryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Short content for LinkedIn.')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /import/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Import Content')).toBeInTheDocument();
+    });
+  });
+
+  it('shows Imported badge for imported content', async () => {
+    mockContentAndClones([
+      buildContent({
+        id: 'c-imported',
+        clone_id: 'clone-1',
+        content_current: 'Imported blog post.',
+        generation_properties: { source: 'import' },
+      }),
+      buildContent({
+        id: 'c-generated',
+        clone_id: 'clone-1',
+        content_current: 'Generated post.',
+        generation_properties: null,
+      }),
+    ]);
+    renderWithProviders(<LibraryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Imported blog post.')).toBeInTheDocument();
+    });
+
+    // Should have exactly one Imported badge
+    expect(screen.getByText('Imported')).toBeInTheDocument();
+    expect(screen.getAllByText('Imported')).toHaveLength(1);
+  });
+
   it('shows filtered empty state with clear button when filters match nothing', async () => {
     server.use(
       http.get('/api/content', () => {

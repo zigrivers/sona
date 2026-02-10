@@ -167,6 +167,38 @@ export function usePartialRegen() {
   });
 }
 
+interface ImportContentRequest {
+  clone_id: string;
+  platform: string;
+  content_text: string;
+  topic?: string;
+  campaign?: string;
+  tags?: string[];
+}
+
+export function useImportContent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ImportContentRequest) =>
+      api.post<ContentResponse>('/api/content/import', body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.list() });
+      toast.success('Content imported');
+    },
+  });
+}
+
+export function useUploadContent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: FormData) => api.upload<ContentResponse>('/api/content/import/upload', body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.list() });
+      toast.success('File imported');
+    },
+  });
+}
+
 export function useContentVersions(contentId: string) {
   return useQuery({
     queryKey: queryKeys.content.versions(contentId),

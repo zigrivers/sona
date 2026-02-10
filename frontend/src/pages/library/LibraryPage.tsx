@@ -6,11 +6,12 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ArrowUpDown, FileText, Plus, SearchX } from 'lucide-react';
+import { ArrowUpDown, FileText, Import, Plus, SearchX } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { BulkActions } from '@/components/content/BulkActions';
+import { ImportDialog } from '@/components/content/ImportDialog';
 import { LibraryFilters, type LibraryFiltersState } from '@/components/content/LibraryFilters';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ export function LibraryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [showImport, setShowImport] = useState(false);
 
   // Read filters from URL params
   const statusTab = searchParams.get('status') ?? 'all';
@@ -190,13 +192,21 @@ export function LibraryPage() {
           <h1 className="text-4xl font-bold tracking-tight">Content Library</h1>
           <p className="text-muted-foreground mt-2">{contentData?.total ?? 0} content items</p>
         </div>
-        <Button asChild>
-          <Link to="/create">
-            <Plus />
-            Create Content
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowImport(true)}>
+            <Import />
+            Import
+          </Button>
+          <Button asChild>
+            <Link to="/create">
+              <Plus />
+              Create Content
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      <ImportDialog open={showImport} onOpenChange={setShowImport} />
 
       <Tabs value={statusTab} onValueChange={handleStatusTabChange}>
         <TabsList variant="line">

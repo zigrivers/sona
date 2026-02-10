@@ -159,6 +159,46 @@ class ContentService:
 
         return results
 
+    # ── Import ────────────────────────────────────────────────────
+
+    async def import_content(
+        self,
+        clone_id: str,
+        platform: str,
+        content_text: str,
+        *,
+        topic: str | None = None,
+        campaign: str | None = None,
+        tags: list[str] | None = None,
+    ) -> Content:
+        """Import existing content as a draft.
+
+        Creates a Content row with source="import" marker and an initial version.
+
+        Raises:
+            CloneNotFoundError: If clone doesn't exist.
+        """
+        await self._get_clone(clone_id)
+
+        content = Content(
+            clone_id=clone_id,
+            platform=platform,
+            status="draft",
+            content_current=content_text,
+            content_original=content_text,
+            input_text="[Imported]",
+            generation_properties={"source": "import"},
+            topic=topic,
+            campaign=campaign,
+            tags=tags or [],
+            word_count=len(content_text.split()),
+            char_count=len(content_text),
+        )
+        self._session.add(content)
+        await self._session.flush()
+        await self._create_version(content, trigger="import")
+        return content
+
     # ── List / Filter ────────────────────────────────────────────
 
     async def list(
