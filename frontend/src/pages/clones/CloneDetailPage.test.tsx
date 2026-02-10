@@ -78,7 +78,9 @@ describe('CloneDetailPage', () => {
     });
 
     await user.click(screen.getByRole('tab', { name: /voice dna/i }));
-    expect(screen.getByText(/voice dna analysis/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('No Voice DNA Yet')).toBeInTheDocument();
+    });
 
     await user.click(screen.getByRole('tab', { name: /generated content/i }));
     expect(screen.getByText(/generated content will appear/i)).toBeInTheDocument();

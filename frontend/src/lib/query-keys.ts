@@ -18,6 +18,7 @@ export const queryKeys = {
 
   dna: {
     detail: (cloneId: string) => ['dna', 'detail', cloneId] as const,
+    versions: (cloneId: string) => ['dna', 'versions', cloneId] as const,
   },
 
   methodology: {

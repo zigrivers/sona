@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { CloneHeader } from '@/components/clones/CloneHeader';
+import { DnaDisplay } from '@/components/clones/DnaDisplay';
 import { SampleList } from '@/components/samples/SampleList';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -59,9 +60,7 @@ export function CloneDetailPage() {
         </TabsContent>
 
         <TabsContent value="voice-dna">
-          <p className="text-muted-foreground py-8 text-center">
-            Voice DNA analysis will be generated from writing samples.
-          </p>
+          <DnaDisplay cloneId={id!} />
         </TabsContent>
 
         <TabsContent value="generated">
