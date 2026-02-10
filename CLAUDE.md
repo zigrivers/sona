@@ -46,7 +46,10 @@ Review `tasks/lessons.md` for relevant patterns before starting.
    git push -u origin HEAD
    gh pr create --title "[BD-<short-id>] type(scope): description" --body "..."
    gh pr merge --squash --auto --subject "[BD-<short-id>] type(scope): description"
+   gh pr checks --watch --fail-fast   # Block until CI passes (or fails)
+   gh pr view --json state -q .state  # Confirm: must show "MERGED"
    ```
+   If checks fail: fix locally, commit, push, and re-run `gh pr checks --watch --fail-fast`.
 
 For non-trivial changes, pause and ask: *"Is there a more elegant way?"*
 
@@ -59,12 +62,15 @@ When given a bug report or ad-hoc request: create a Beads task first (`bd create
 - For complex problems, throw more compute at it via subagents
 
 ### 6. Continue to Next Task
-After completing a task:
+After PR merge is confirmed (`gh pr view --json state -q .state` → `MERGED`):
 ```bash
-bd close <id>
-git branch -d bd-<task-id>/<short-desc>   # Clean up local branch
+bd close <id>                               # Close task ONLY after PR merges
+git checkout agent-N-home                   # Worktree: return to home branch
+git branch -d bd-<task-id>/<short-desc>     # Clean up local feature branch
+git fetch origin                            # Get latest main for next branch
 bd ready                                    # Check for more unblocked tasks
 ```
+- **Never `bd close` before the PR merges** — if CI fails, the task stays in progress
 - If tasks are available: pick the lowest-ID, create a feature branch, and implement it
 - If no tasks available: you're done — all work is complete
 - **Keep working until `bd ready` returns no available tasks**
@@ -85,7 +91,7 @@ Confirm: no uncommitted changes, no unpushed feature branches.
 |------|---------|
 | **Branch naming** | `bd-<task-id>/<short-desc>` (e.g., `bd-sona-abc/add-login`) |
 | **Commit format** | `[BD-<short-id>] type(scope): description` |
-| **PR flow** | `git push -u origin HEAD` → `gh pr create` → `gh pr merge --squash --auto` |
+| **PR flow** | `git push -u origin HEAD` → `gh pr create` → `gh pr merge --squash --auto` → `gh pr checks --watch --fail-fast` → confirm `MERGED` |
 | **Stay current** | `git fetch origin && git rebase origin/main` before pushing |
 | **Force push** | Only `--force-with-lease` on feature branches. **Never** force push to main. |
 
@@ -228,6 +234,8 @@ Reference: `docs/design-system.md` and `frontend/src/styles/globals.css`
 | **Pre-commit hook fails** | Fix the issue, re-stage, create a **new** commit. Never use `--no-verify`. |
 | **`bd ready` returns nothing** | Session complete — inform the user all available work is done. |
 | **PR merge conflicts** | Rebase feature branch on `origin/main`, force-push with `--force-with-lease`, let auto-merge retry. |
+| **PR checks fail** | Fix locally, commit, push. Run `gh pr checks --watch --fail-fast` to re-monitor. Do NOT `bd close` until PR merges. |
+| **Auto-merge stuck** | `gh pr view --json state,mergeStateStatus` to diagnose. If blocked, check `gh pr checks`. If unmergeable, rebase on `origin/main` and `--force-with-lease`. |
 
 ## Browser Testing
 
