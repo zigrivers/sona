@@ -6,10 +6,11 @@ import { Accordion } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAnalyzeDna, useDna, useUpdateDna } from '@/hooks/use-dna';
+import { useAnalyzeDna, useDna, useDnaVersions, useUpdateDna } from '@/hooks/use-dna';
 
 import { DNA_CATEGORIES } from './dna-categories';
 import { DnaCategorySection } from './DnaCategorySection';
+import { DnaTimeline } from './DnaTimeline';
 import { DnaVersionHistory } from './DnaVersionHistory';
 
 interface DnaDisplayProps {
@@ -18,6 +19,7 @@ interface DnaDisplayProps {
 
 export function DnaDisplay({ cloneId }: DnaDisplayProps) {
   const { data: dna, isLoading } = useDna(cloneId);
+  const { data: versionsData } = useDnaVersions(cloneId);
   const updateMutation = useUpdateDna(cloneId);
   const analyzeMutation = useAnalyzeDna(cloneId);
 
@@ -104,6 +106,13 @@ export function DnaDisplay({ cloneId }: DnaDisplayProps) {
         <h3 className="text-sm font-medium">Version History</h3>
         <DnaVersionHistory cloneId={cloneId} />
       </div>
+
+      {versionsData?.items && versionsData.items.length > 1 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium">Evolution Timeline</h3>
+          <DnaTimeline versions={versionsData.items} />
+        </div>
+      )}
     </div>
   );
 }

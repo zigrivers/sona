@@ -138,8 +138,8 @@ describe('DnaDisplay', () => {
     renderWithProviders(<DnaDisplay cloneId="clone-1" />);
 
     expect(await screen.findByText('Version History')).toBeInTheDocument();
-    expect(await screen.findByText('v2')).toBeInTheDocument();
-    expect(screen.getByText('v1')).toBeInTheDocument();
+    expect((await screen.findAllByText('v2')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('v1').length).toBeGreaterThan(0);
   });
 
   it('analyze button triggers DNA generation', async () => {
