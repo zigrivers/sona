@@ -202,6 +202,36 @@ class TestListDNAVersionsEndpoint:
         assert resp.json()["items"] == []
 
 
+class TestDNAPromptEndpoint:
+    async def test_get_prompt_returns_200(self, client: AsyncClient) -> None:
+        """GET /api/clones/{id}/dna/prompt returns 200 with prompt text."""
+        clone_id = await _create_clone_with_samples(client)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=MOCK_DNA_RESPONSE)
+
+        with patch("app.api.clones.get_llm_provider", return_value=mock_provider):
+            await client.post(
+                f"/api/clones/{clone_id}/analyze",
+                json={"model": "gpt-4o"},
+            )
+
+        resp = await client.get(f"/api/clones/{clone_id}/dna/prompt")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "prompt" in data
+        assert data["prompt"].startswith("Write in a style that")
+        assert "advanced" in data["prompt"]
+
+    async def test_get_prompt_not_found(self, client: AsyncClient) -> None:
+        """GET /api/clones/{id}/dna/prompt returns 404 when no DNA exists."""
+        resp = await client.post("/api/clones", json={"name": "No DNA Clone"})
+        clone_id = resp.json()["id"]
+
+        resp = await client.get(f"/api/clones/{clone_id}/dna/prompt")
+        assert resp.status_code == 404
+
+
 class TestManualEditEndpoint:
     async def test_manual_edit_returns_200(self, client: AsyncClient) -> None:
         """PUT /api/clones/{id}/dna returns 200 with new version."""

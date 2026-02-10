@@ -14,6 +14,88 @@ from app.models.clone import VoiceClone
 from app.models.dna import VoiceDNAVersion
 from app.models.methodology import MethodologySettings
 
+_CATEGORY_TEMPLATES: dict[str, tuple[str, dict[str, str]]] = {
+    "vocabulary": (
+        "Vocabulary",
+        {
+            "complexity_level": "Uses {v} complexity",
+            "jargon_usage": "with {v} jargon",
+            "contraction_frequency": "Contractions are {v}",
+            "word_choice_patterns": "Word choice patterns: {v}",
+        },
+    ),
+    "sentence_structure": (
+        "Sentence Structure",
+        {
+            "average_length": "{v} average sentence length",
+            "complexity_variation": "{v} complexity variation",
+            "fragment_usage": "{v} fragment usage",
+            "patterns": "Patterns: {v}",
+        },
+    ),
+    "paragraph_structure": (
+        "Paragraph Structure",
+        {
+            "average_length": "{v} average paragraph length",
+            "transition_style": "{v} transition style",
+            "organization": "{v} organization",
+        },
+    ),
+    "tone": (
+        "Tone",
+        {
+            "formality_level": "{v} formality",
+            "warmth": "{v} warmth",
+            "primary_tone": "Primary tone is {v}",
+            "secondary_tone": "secondary tone is {v}",
+        },
+    ),
+    "rhetorical_devices": (
+        "Rhetorical Devices",
+        {
+            "metaphor_usage": "{v} metaphor usage",
+            "repetition_patterns": "{v} repetition patterns",
+            "rhetorical_questions": "{v} rhetorical questions",
+            "storytelling_tendency": "{v} storytelling tendency",
+        },
+    ),
+    "punctuation": (
+        "Punctuation",
+        {
+            "em_dash_frequency": "{v} em dash frequency",
+            "semicolon_usage": "{v} semicolon usage",
+            "exclamation_points": "{v} exclamation points",
+            "parenthetical_asides": "{v} parenthetical asides",
+            "ellipsis_usage": "{v} ellipsis usage",
+        },
+    ),
+    "openings_and_closings": (
+        "Openings & Closings",
+        {
+            "opening_patterns": "Opening patterns: {v}",
+            "hook_style": "{v} hook style",
+            "closing_patterns": "Closing patterns: {v}",
+            "cta_style": "{v} call-to-action style",
+        },
+    ),
+    "humor": (
+        "Humor",
+        {
+            "frequency": "{v} humor frequency",
+            "types": "Humor types: {v}",
+            "placement": "{v} humor placement",
+        },
+    ),
+    "signatures": (
+        "Signatures",
+        {
+            "catchphrases": "Known catchphrases include {v}",
+            "recurring_themes": "Recurring themes: {v}",
+            "unique_mannerisms": "Unique mannerisms: {v}",
+        },
+    ),
+}
+
 
 class DNAService:
     def __init__(self, session: AsyncSession) -> None:
@@ -174,6 +256,34 @@ class DNAService:
         )
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
+
+    # ── Export ─────────────────────────────────────────────────────
+
+    @staticmethod
+    def export_as_prompt(data: dict[str, Any]) -> str:
+        """Convert a DNA data dict into a natural language prompt string."""
+        sections: list[str] = []
+        for cat_key, (label, field_templates) in _CATEGORY_TEMPLATES.items():
+            cat_data = data.get(cat_key)
+            if not cat_data or not isinstance(cat_data, dict):
+                continue
+            parts: list[str] = []
+            for field_key, template in field_templates.items():
+                value = cat_data.get(field_key)
+                if value is None:
+                    continue
+                if isinstance(value, list):
+                    if not value:
+                        continue
+                    formatted = ", ".join(f'"{item}"' for item in value)
+                else:
+                    formatted = str(value)
+                parts.append(template.format(v=formatted))
+            if parts:
+                sections.append(f"{label}: {'. '.join(parts)}.")
+
+        body = "\n\n".join(sections)
+        return f"Write in a style that matches the following voice DNA profile:\n\n{body}"
 
     # ── Helpers ────────────────────────────────────────────────────
 
