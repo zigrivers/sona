@@ -9,6 +9,7 @@ import type {
   ContentResponse,
   ContentVersionListResponse,
   DetectionResponse,
+  GenerateVariantsResponse,
 } from '@/types/api';
 
 interface ContentListParams {
@@ -203,6 +204,39 @@ export function useContentVersions(contentId: string) {
   return useQuery({
     queryKey: queryKeys.content.versions(contentId),
     queryFn: () => api.get<ContentVersionListResponse>(`/api/content/${contentId}/versions`),
+  });
+}
+
+interface GenerateVariantsRequest {
+  clone_id: string;
+  platform: string;
+  input_text: string;
+  properties?: Record<string, unknown>;
+}
+
+export function useGenerateVariants() {
+  return useMutation({
+    mutationFn: (body: GenerateVariantsRequest) =>
+      api.post<GenerateVariantsResponse>('/api/content/generate/variants', body),
+  });
+}
+
+interface SaveVariantRequestBody {
+  clone_id: string;
+  platform: string;
+  input_text: string;
+  content_text: string;
+  properties?: Record<string, unknown>;
+}
+
+export function useSaveVariant() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SaveVariantRequestBody) =>
+      api.post<ContentResponse>('/api/content/variants/select', body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.list() });
+    },
   });
 }
 

@@ -30,7 +30,11 @@ from app.schemas.content import (
     ContentVersionListResponse,
     ContentVersionResponse,
     FeedbackRegenRequest,
+    GenerateVariantsRequest,
+    GenerateVariantsResponse,
     PartialRegenRequest,
+    SaveVariantRequest,
+    VariantItem,
 )
 from app.schemas.detection import DetectionResponse
 from app.schemas.scoring import AuthenticityScoreResponse
@@ -154,6 +158,52 @@ async def stream_generate_content(
         event_generator(),
         media_type="text/event-stream",
     )
+
+
+@router.post("/generate/variants", response_model=GenerateVariantsResponse)
+async def generate_variants(
+    body: GenerateVariantsRequest,
+    session: SessionDep,
+    provider: ProviderDep,
+) -> GenerateVariantsResponse | JSONResponse:
+    """Generate 3 content variants at different temperatures for A/B comparison."""
+    service = ContentService(session, provider)
+
+    try:
+        variants = await service.generate_variants(
+            clone_id=body.clone_id,
+            platform=body.platform,
+            input_text=body.input_text,
+            properties=body.properties,
+        )
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": str(exc), "code": "DNA_REQUIRED"},
+        )
+
+    return GenerateVariantsResponse(
+        platform=body.platform,
+        variants=[VariantItem(**v) for v in variants],
+    )
+
+
+@router.post("/variants/select", response_model=ContentResponse, status_code=201)
+async def select_variant(
+    body: SaveVariantRequest,
+    session: SessionDep,
+) -> ContentResponse:
+    """Save a selected variant as a new Content record."""
+    service = ContentService(session)
+    content = await service.save_variant(
+        clone_id=body.clone_id,
+        platform=body.platform,
+        input_text=body.input_text,
+        content_text=body.content_text,
+        properties=body.properties,
+    )
+    await session.commit()
+    return ContentResponse.model_validate(content)
 
 
 @router.get("", response_model=ContentListResponse)

@@ -120,3 +120,35 @@ class ContentImport(BaseModel):
 
 class BulkResponse(BaseModel):
     count: int
+
+
+# ── Variant A/B Comparison ────────────────────────────────────────
+
+
+class VariantItem(BaseModel):
+    variant_index: int
+    temperature: float
+    content_text: str
+    word_count: int
+    char_count: int
+
+
+class GenerateVariantsRequest(BaseModel):
+    clone_id: str
+    platform: str
+    input_text: str = Field(min_length=1)
+    properties: dict[str, Any] | None = None
+
+
+class GenerateVariantsResponse(BaseModel):
+    platform: str
+    variants: list[VariantItem]
+    cost_multiplier: int = 3
+
+
+class SaveVariantRequest(BaseModel):
+    clone_id: str
+    platform: str
+    input_text: str = Field(min_length=1)
+    content_text: str = Field(min_length=1)
+    properties: dict[str, Any] | None = None

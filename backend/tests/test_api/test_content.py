@@ -813,3 +813,105 @@ class TestDetectEndpoint:
         """POST /api/content/{id}/detect for non-existent content should return 404."""
         response = await client.post("/api/content/nonexistent-id/detect")
         assert response.status_code == 404
+
+
+class TestGenerateVariantsEndpoint:
+    async def test_generate_variants_returns_200(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """POST /api/content/generate/variants should return 200 with 3 variants."""
+        clone = await _create_clone_with_dna(session)
+        mock_provider.complete = AsyncMock(return_value="Variant text here.")
+
+        response = await client.post(
+            "/api/content/generate/variants",
+            json={
+                "clone_id": clone.id,
+                "platform": "blog",
+                "input_text": "Write about testing.",
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["platform"] == "blog"
+        assert len(data["variants"]) == 3
+        assert data["cost_multiplier"] == 3
+        temps = [v["temperature"] for v in data["variants"]]
+        assert temps == [0.5, 0.7, 0.9]
+
+    async def test_generate_variants_without_dna_400(
+        self, client: AsyncClient, session: AsyncSession
+    ) -> None:
+        """POST /api/content/generate/variants without DNA should return 400."""
+        clone = VoiceClone(id=nanoid.generate(), name="No DNA Clone")
+        session.add(clone)
+        await session.commit()
+
+        response = await client.post(
+            "/api/content/generate/variants",
+            json={
+                "clone_id": clone.id,
+                "platform": "blog",
+                "input_text": "Write something.",
+            },
+        )
+
+        assert response.status_code == 400
+        assert "DNA" in response.json()["detail"]
+
+    async def test_generate_variants_clone_not_found_404(self, client: AsyncClient) -> None:
+        """POST /api/content/generate/variants for missing clone should return 404."""
+        response = await client.post(
+            "/api/content/generate/variants",
+            json={
+                "clone_id": "nonexistent-id",
+                "platform": "blog",
+                "input_text": "Write something.",
+            },
+        )
+
+        assert response.status_code == 404
+
+
+class TestSelectVariantEndpoint:
+    async def test_select_variant_returns_201(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+    ) -> None:
+        """POST /api/content/variants/select should return 201 with saved content."""
+        clone = await _create_clone_with_dna(session)
+
+        response = await client.post(
+            "/api/content/variants/select",
+            json={
+                "clone_id": clone.id,
+                "platform": "blog",
+                "input_text": "Write about testing.",
+                "content_text": "Selected variant text.",
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["content_current"] == "Selected variant text."
+        assert data["platform"] == "blog"
+        assert data["status"] == "draft"
+
+    async def test_select_variant_clone_not_found_404(self, client: AsyncClient) -> None:
+        """POST /api/content/variants/select for missing clone should return 404."""
+        response = await client.post(
+            "/api/content/variants/select",
+            json={
+                "clone_id": "nonexistent-id",
+                "platform": "blog",
+                "input_text": "Write about testing.",
+                "content_text": "Some text.",
+            },
+        )
+
+        assert response.status_code == 404

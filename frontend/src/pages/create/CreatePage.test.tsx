@@ -58,7 +58,7 @@ describe('CreatePage', () => {
     expect(screen.getByRole('button', { name: /select a voice/i })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/describe the content/i)).toBeInTheDocument();
     expect(screen.getByText('Generation Properties')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /generate/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^generate ⌘/i })).toBeInTheDocument();
   });
 
   it('properties form fields', async () => {
@@ -102,7 +102,7 @@ describe('CreatePage', () => {
     await user.click(screen.getByRole('checkbox', { name: /linkedin/i }));
 
     // Button should be disabled — no clone selected
-    const button = screen.getByRole('button', { name: /generate/i });
+    const button = screen.getByRole('button', { name: /^generate ⌘/i });
     expect(button).toBeDisabled();
   });
 
@@ -123,7 +123,7 @@ describe('CreatePage', () => {
     await user.click(screen.getByRole('checkbox', { name: /linkedin/i }));
 
     // Button should be disabled — no input text
-    const button = screen.getByRole('button', { name: /generate/i });
+    const button = screen.getByRole('button', { name: /^generate ⌘/i });
     expect(button).toBeDisabled();
   });
 
@@ -145,7 +145,7 @@ describe('CreatePage', () => {
     await user.type(textarea, 'Write a post');
 
     // Button should be disabled — no platforms
-    const button = screen.getByRole('button', { name: /generate/i });
+    const button = screen.getByRole('button', { name: /^generate ⌘/i });
     expect(button).toBeDisabled();
   });
 
@@ -170,7 +170,7 @@ describe('CreatePage', () => {
     await user.click(screen.getByRole('checkbox', { name: /linkedin/i }));
 
     // Button should be enabled
-    const button = screen.getByRole('button', { name: /generate/i });
+    const button = screen.getByRole('button', { name: /^generate ⌘/i });
     expect(button).not.toBeDisabled();
   });
 
@@ -229,7 +229,7 @@ describe('CreatePage', () => {
     );
 
     // Click generate
-    await user.click(screen.getByRole('button', { name: /generate/i }));
+    await user.click(screen.getByRole('button', { name: /^generate ⌘/i }));
 
     // Should show generating state
     await waitFor(() => {
@@ -264,7 +264,7 @@ describe('CreatePage', () => {
     await user.click(screen.getByRole('checkbox', { name: /twitter/i }));
 
     // Click generate
-    await user.click(screen.getByRole('button', { name: /generate/i }));
+    await user.click(screen.getByRole('button', { name: /^generate ⌘/i }));
 
     // Should show review panel with tabs
     await waitFor(() => {
@@ -324,7 +324,7 @@ describe('CreatePage', () => {
     mockClones();
     renderWithProviders(<CreatePage />);
 
-    expect(screen.getByText(/generate/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^generate ⌘/i })).toBeInTheDocument();
     // Tooltip content with shortcut hint is present in DOM
     expect(screen.getByText(/⌘↵/)).toBeInTheDocument();
   });
