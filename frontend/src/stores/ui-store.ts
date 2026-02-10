@@ -6,8 +6,10 @@ export type Theme = 'light' | 'dark' | 'system';
 interface UIState {
   theme: Theme;
   sidebarCollapsed: boolean;
+  hideDemoClones: boolean;
   setTheme: (theme: Theme) => void;
   toggleSidebar: () => void;
+  setHideDemoClones: (hide: boolean) => void;
 }
 
 function applyTheme(theme: Theme) {
@@ -23,11 +25,13 @@ export const useUIStore = create<UIState>()(
     (set) => ({
       theme: 'system',
       sidebarCollapsed: false,
+      hideDemoClones: false,
       setTheme: (theme) => {
         applyTheme(theme);
         set({ theme });
       },
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      setHideDemoClones: (hide) => set({ hideDemoClones: hide }),
     }),
     {
       name: 'sona-ui',

@@ -1,21 +1,46 @@
-import { Mic, Plus, Settings } from 'lucide-react';
-import { useState } from 'react';
+import { Mic, Plus, SearchX, Settings } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { CloneCard } from '@/components/clones/CloneCard';
+import { CloneListFilters, type CloneTypeFilter } from '@/components/clones/CloneListFilters';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useClones } from '@/hooks/use-clones';
 import { useHasProvider } from '@/hooks/use-providers';
+import { useUIStore } from '@/stores/ui-store';
 
 export function ClonesPage() {
   const { hasProvider, isLoading: providersLoading } = useHasProvider();
   const { data: cloneData, isLoading: clonesLoading } = useClones();
   const [showDemos, setShowDemos] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<CloneTypeFilter>('all');
+  const hideDemoClones = useUIStore((s) => s.hideDemoClones);
+  const setHideDemoClones = useUIStore((s) => s.setHideDemoClones);
 
   const isLoading = providersLoading || clonesLoading;
+
+  const filteredClones = useMemo(() => {
+    if (!cloneData?.items) return [];
+
+    return cloneData.items
+      .filter((c) => {
+        if (searchQuery && !c.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        if (typeFilter !== 'all' && c.type !== typeFilter) return false;
+        if (hideDemoClones && c.is_demo) return false;
+        return true;
+      })
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  }, [cloneData?.items, searchQuery, typeFilter, hideDemoClones]);
+
+  const hasClones = (cloneData?.items.length ?? 0) > 0;
+
+  function clearFilters() {
+    setSearchQuery('');
+    setTypeFilter('all');
+  }
 
   if (isLoading) {
     return (
@@ -30,8 +55,6 @@ export function ClonesPage() {
       </div>
     );
   }
-
-  const demoClones = cloneData?.items.filter((c) => c.is_demo) ?? [];
 
   if (!hasProvider && !showDemos) {
     return (
@@ -55,6 +78,25 @@ export function ClonesPage() {
     );
   }
 
+  if (!hasClones) {
+    return (
+      <div className="space-y-8">
+        <EmptyState
+          icon={Mic}
+          heading="Create Your First Clone"
+          description="Upload writing samples to create a voice clone that captures your unique style."
+        >
+          <Button asChild>
+            <Link to="/clones/new">
+              <Plus />
+              Create Clone
+            </Link>
+          </Button>
+        </EmptyState>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -70,7 +112,7 @@ export function ClonesPage() {
           <Button asChild>
             <Link to="/clones/new">
               <Plus />
-              Create Your First Clone
+              New Clone
             </Link>
           </Button>
         )}
@@ -87,24 +129,31 @@ export function ClonesPage() {
         </div>
       )}
 
-      {demoClones.length > 0 && (
+      <CloneListFilters
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        typeFilter={typeFilter}
+        onTypeFilterChange={setTypeFilter}
+        hideDemos={hideDemoClones}
+        onHideDemosChange={setHideDemoClones}
+      />
+
+      {filteredClones.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {demoClones.map((clone) => (
-            <Card key={clone.id}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {clone.name}
-                  <Badge variant="secondary">Demo</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground text-sm">
-                  {clone.description ?? `${clone.sample_count} samples`}
-                </p>
-              </CardContent>
-            </Card>
+          {filteredClones.map((clone) => (
+            <CloneCard key={clone.id} clone={clone} />
           ))}
         </div>
+      ) : (
+        <EmptyState
+          icon={SearchX}
+          heading="No clones match your filters"
+          description="Try adjusting your search or filter criteria."
+        >
+          <Button variant="outline" onClick={clearFilters}>
+            Clear Filters
+          </Button>
+        </EmptyState>
       )}
     </div>
   );
