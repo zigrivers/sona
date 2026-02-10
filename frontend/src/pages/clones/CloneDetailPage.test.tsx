@@ -185,9 +185,10 @@ describe('CloneDetailPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Blog Post')).toBeInTheDocument();
+      // Blog Post appears in both GapHeatmap and SampleList
+      expect(screen.getAllByText('Blog Post').length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getByText('Tweet')).toBeInTheDocument();
+    expect(screen.getAllByText('Tweet').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('200')).toBeInTheDocument();
     expect(screen.getByText('30')).toBeInTheDocument();
   });
