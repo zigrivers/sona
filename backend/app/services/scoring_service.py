@@ -159,6 +159,31 @@ class ScoringService:
 
         return content
 
+    async def score_preview(self, clone_id: str, content_text: str) -> dict[str, Any]:
+        """Score arbitrary text for voice authenticity without persisting.
+
+        Returns:
+            Dict with overall_score and dimensions list.
+
+        Raises:
+            ValueError: If clone has no DNA.
+        """
+        dna = await self._get_latest_dna(clone_id)
+
+        raw_data = cast(dict[str, Any], dna.data)  # pyright: ignore[reportUnknownMemberType]
+        dna_json = json.dumps(raw_data)
+
+        messages = build_scoring_prompt(dna_json=dna_json, content_text=content_text)
+        response = await self._provider.complete(messages, temperature=0.3)
+
+        parsed = json.loads(response)
+        dimensions: list[dict[str, Any]] = parsed["dimensions"]
+
+        scores = [d["score"] for d in dimensions]
+        overall = round(sum(scores) / len(scores))
+
+        return {"overall_score": overall, "dimensions": dimensions}
+
     async def _get_content(self, content_id: str) -> Content:
         result = await self._session.execute(select(Content).where(Content.id == content_id))
         content = result.scalar_one_or_none()

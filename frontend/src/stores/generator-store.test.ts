@@ -35,4 +35,20 @@ describe('generator-store', () => {
     useGeneratorStore.getState().setLastUsedCloneId(null);
     expect(useGeneratorStore.getState().lastUsedCloneId).toBeNull();
   });
+
+  it('setRepurpose sets repurpose fields and clone id', () => {
+    useGeneratorStore.getState().setRepurpose('Some content', 'clone-abc', 'twitter');
+    const state = useGeneratorStore.getState();
+    expect(state.repurposeText).toBe('Some content');
+    expect(state.repurposeSourcePlatform).toBe('twitter');
+    expect(state.lastUsedCloneId).toBe('clone-abc');
+  });
+
+  it('clearRepurpose clears repurpose fields', () => {
+    useGeneratorStore.getState().setRepurpose('Some content', 'clone-abc', 'twitter');
+    useGeneratorStore.getState().clearRepurpose();
+    const state = useGeneratorStore.getState();
+    expect(state.repurposeText).toBeNull();
+    expect(state.repurposeSourcePlatform).toBeNull();
+  });
 });

@@ -206,6 +206,32 @@ async def select_variant(
     return ContentResponse.model_validate(content)
 
 
+class ScorePreviewRequest(BaseModel):
+    clone_id: str
+    content_text: str = Field(min_length=1)
+
+
+@router.post("/score-preview", response_model=AuthenticityScoreResponse)
+async def score_preview(
+    body: ScorePreviewRequest,
+    session: SessionDep,
+    provider: ProviderDep,
+) -> AuthenticityScoreResponse | JSONResponse:
+    """Score arbitrary text for voice authenticity without persisting."""
+    service = ScoringService(session, provider)
+    try:
+        result = await service.score_preview(body.clone_id, body.content_text)
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": str(exc), "code": "DNA_REQUIRED"},
+        )
+    return AuthenticityScoreResponse(
+        overall_score=result["overall_score"],
+        dimensions=result["dimensions"],
+    )
+
+
 @router.get("", response_model=ContentListResponse)
 async def list_content(
     session: SessionDep,

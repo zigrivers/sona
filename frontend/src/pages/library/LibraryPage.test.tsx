@@ -2,8 +2,9 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { Route, Routes } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
+import { useGeneratorStore } from '@/stores/generator-store';
 import { buildClone, buildContent } from '@/test/factories';
 import { server } from '@/test/handlers';
 import { renderWithProviders } from '@/test/render';
@@ -49,6 +50,15 @@ function mockContentAndClones(
 }
 
 describe('LibraryPage', () => {
+  beforeEach(() => {
+    useGeneratorStore.setState({
+      lastUsedCloneId: null,
+      lastUsedProperties: null,
+      repurposeText: null,
+      repurposeSourcePlatform: null,
+    });
+  });
+
   it('shows loading skeleton while data loads', () => {
     mockContentAndClones();
     renderWithProviders(<LibraryPage />);
@@ -359,5 +369,60 @@ describe('LibraryPage', () => {
       expect(updatedCheckboxes[0]).toBeChecked();
       expect(updatedCheckboxes[1]).toBeChecked();
     });
+  });
+
+  it('actions column shows Repurpose option', async () => {
+    mockContentAndClones();
+    const user = userEvent.setup();
+    renderWithProviders(<LibraryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Short content for LinkedIn.')).toBeInTheDocument();
+    });
+
+    // Click the actions menu on the first row
+    const actionButtons = screen.getAllByRole('button', { name: /actions/i });
+    await user.click(actionButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByRole('menuitem', { name: /repurpose/i })).toBeInTheDocument();
+    });
+  });
+
+  it('Repurpose sets store and navigates to /create', async () => {
+    mockContentAndClones();
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/library" element={<LibraryPage />} />
+        <Route path="/create" element={<div data-testid="create-page">Create</div>} />
+      </Routes>,
+      { initialEntries: ['/library'] }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Short content for LinkedIn.')).toBeInTheDocument();
+    });
+
+    // Click the actions menu on the first row
+    const actionButtons = screen.getAllByRole('button', { name: /actions/i });
+    await user.click(actionButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByRole('menuitem', { name: /repurpose/i })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('menuitem', { name: /repurpose/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('create-page')).toBeInTheDocument();
+    });
+
+    // Verify store was set
+    const state = useGeneratorStore.getState();
+    expect(state.repurposeText).toBe('Short content for LinkedIn.');
+    expect(state.lastUsedCloneId).toBe('clone-1');
+    expect(state.repurposeSourcePlatform).toBe('linkedin');
   });
 });

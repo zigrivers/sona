@@ -1,5 +1,5 @@
 import { GitCompare, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { ContentInput } from '@/components/content/ContentInput';
 import { GenerationProgress } from '@/components/content/GenerationProgress';
@@ -19,14 +19,29 @@ import {
 import type { ContentResponse, GenerateVariantsResponse, VariantItem } from '@/types/api';
 
 export function CreatePage() {
-  const { lastUsedCloneId, lastUsedProperties, setLastUsedCloneId, setLastUsedProperties } =
-    useGeneratorStore();
+  const {
+    lastUsedCloneId,
+    lastUsedProperties,
+    repurposeText,
+    setLastUsedCloneId,
+    setLastUsedProperties,
+    clearRepurpose,
+  } = useGeneratorStore();
 
   const [cloneId, setCloneId] = useState<string | null>(lastUsedCloneId);
-  const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState(repurposeText ?? '');
   const [properties, setProperties] = useState<GenerationProperties>(
-    lastUsedProperties ?? DEFAULT_PROPERTIES
+    repurposeText
+      ? { ...(lastUsedProperties ?? DEFAULT_PROPERTIES), platforms: [] }
+      : (lastUsedProperties ?? DEFAULT_PROPERTIES)
   );
+
+  useEffect(() => {
+    if (repurposeText) {
+      clearRepurpose();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [generatedItems, setGeneratedItems] = useState<ContentResponse[] | null>(null);
   const [variantResult, setVariantResult] = useState<GenerateVariantsResponse | null>(null);
 

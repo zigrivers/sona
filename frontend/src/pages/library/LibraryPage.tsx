@@ -29,7 +29,7 @@ import { useClones } from '@/hooks/use-clones';
 import { useContentList } from '@/hooks/use-content';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 
-import { columns, type ContentRow, selectColumn } from './columns';
+import { actionsColumn, columns, type ContentRow, selectColumn } from './columns';
 
 const STATUS_TABS = ['all', 'draft', 'review', 'approved', 'published', 'archived'] as const;
 
@@ -121,7 +121,7 @@ export function LibraryPage() {
     [contentData, cloneMap]
   );
 
-  const allColumns = useMemo(() => [selectColumn, ...columns], []);
+  const allColumns = useMemo(() => [selectColumn, ...columns, actionsColumn], []);
 
   const table = useReactTable({
     data: rows,

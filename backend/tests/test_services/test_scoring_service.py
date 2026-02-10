@@ -435,6 +435,32 @@ class TestScoringService:
         with pytest.raises(ContentNotFoundError):
             await service.score("nonexistent-id")
 
+    async def test_score_preview_returns_dimensions(self, session: AsyncSession) -> None:
+        """score_preview() should return overall_score and dimensions without persisting."""
+        clone = await _create_clone(session)
+        await _create_dna(session, clone.id)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=_make_llm_response())
+
+        service = ScoringService(session, mock_provider)
+        result = await service.score_preview(clone.id, "Some content to score.")
+
+        assert "overall_score" in result
+        assert "dimensions" in result
+        assert len(result["dimensions"]) == 8
+        assert isinstance(result["overall_score"], int)
+
+    async def test_score_preview_no_dna_raises(self, session: AsyncSession) -> None:
+        """score_preview() should raise ValueError when clone has no DNA."""
+        clone = await _create_clone(session)
+
+        mock_provider = AsyncMock()
+        service = ScoringService(session, mock_provider)
+
+        with pytest.raises(ValueError, match="DNA"):
+            await service.score_preview(clone.id, "Some content.")
+
     async def test_score_persisted_to_db(self, session: AsyncSession) -> None:
         """score() should persist authenticity_score and score_dimensions to the content row."""
         clone = await _create_clone(session)
