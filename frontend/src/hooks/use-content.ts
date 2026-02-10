@@ -109,6 +109,18 @@ export function useUpdateContent() {
   });
 }
 
+interface ScorePreviewRequest {
+  clone_id: string;
+  content_text: string;
+}
+
+export function useScorePreview() {
+  return useMutation({
+    mutationFn: (body: ScorePreviewRequest) =>
+      api.post<AuthenticityScoreResponse>('/api/content/score-preview', body),
+  });
+}
+
 export function useScoreContent() {
   return useMutation({
     mutationFn: (id: string) => api.post<AuthenticityScoreResponse>(`/api/content/${id}/score`),

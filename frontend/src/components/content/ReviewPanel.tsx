@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Label } from '@/components/ui/label';
@@ -10,8 +10,10 @@ import {
   usePartialRegen,
   useRegenerateContent,
   useScoreContent,
+  useScorePreview,
   useUpdateContent,
 } from '@/hooks/use-content';
+import { useDebounce } from '@/hooks/use-debounce';
 import { useUIStore } from '@/stores/ui-store';
 import type { AuthenticityScoreResponse, ContentResponse, DetectionResponse } from '@/types/api';
 import { type PlatformKey, PLATFORMS } from '@/types/platforms';
@@ -40,15 +42,34 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
   const showInputPanel = useUIStore((s) => s.showInputPanel);
   const setShowInputPanel = useUIStore((s) => s.setShowInputPanel);
 
+  const [activeTabId, setActiveTabId] = useState<string>(items[0]?.id ?? '');
   const [scoreResults, setScoreResults] = useState<Record<string, AuthenticityScoreResponse>>({});
   const [detectionResults, setDetectionResults] = useState<Record<string, DetectionResponse>>({});
 
   const updateMutation = useUpdateContent();
   const regenerateMutation = useRegenerateContent();
   const scoreMutation = useScoreContent();
+  const scorePreviewMutation = useScorePreview();
   const detectMutation = useDetectAI();
   const feedbackRegenMutation = useFeedbackRegen();
   const partialRegenMutation = usePartialRegen();
+
+  // Auto-score via debounce
+  const activeText = editedContent[activeTabId] ?? '';
+  const debouncedText = useDebounce(activeText, 2000);
+
+  useEffect(() => {
+    if (!debouncedText.trim() || !generationParams.clone_id) return;
+    scorePreviewMutation.mutate(
+      { clone_id: generationParams.clone_id, content_text: debouncedText },
+      {
+        onSuccess: (data) => {
+          setScoreResults((prev) => ({ ...prev, [activeTabId]: data }));
+        },
+      }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedText, activeTabId, generationParams.clone_id]);
 
   function handleTextChange(contentId: string, text: string) {
     setEditedContent((prev) => ({ ...prev, [contentId]: text }));
@@ -136,8 +157,13 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
 
   const firstPlatform = localItems[0]?.platform ?? '';
 
+  function handleTabChange(platform: string) {
+    const item = localItems.find((i) => i.platform === platform);
+    if (item) setActiveTabId(item.id);
+  }
+
   return (
-    <Tabs defaultValue={firstPlatform}>
+    <Tabs defaultValue={firstPlatform} onValueChange={handleTabChange}>
       <TabsList>
         {localItems.map((item) => (
           <TabsTrigger key={item.id} value={item.platform}>
@@ -163,7 +189,7 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
             onCheckDetection={() => handleCheckDetection(item)}
             isSaving={updateMutation.isPending}
             isRegenerating={regenerateMutation.isPending}
-            isScoring={scoreMutation.isPending}
+            isScoring={scoreMutation.isPending || scorePreviewMutation.isPending}
             isDetecting={detectMutation.isPending}
             scoreResult={scoreResults[item.id] ?? null}
             detectionResult={detectionResults[item.id] ?? null}

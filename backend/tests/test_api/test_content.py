@@ -578,6 +578,56 @@ def _make_score_response() -> str:
     return json.dumps({"dimensions": dims})
 
 
+class TestScorePreviewEndpoint:
+    async def test_score_preview_200(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """POST /api/content/score-preview should return 200 with scores."""
+        clone = await _create_clone_with_dna(session)
+        mock_provider.complete = AsyncMock(return_value=_make_score_response())
+
+        response = await client.post(
+            "/api/content/score-preview",
+            json={"clone_id": clone.id, "content_text": "Some content to score."},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "overall_score" in data
+        assert "dimensions" in data
+        assert len(data["dimensions"]) == 8
+
+    async def test_score_preview_no_dna_400(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+    ) -> None:
+        """POST /api/content/score-preview without DNA should return 400."""
+        clone = VoiceClone(id=nanoid.generate(), name="No DNA Clone")
+        session.add(clone)
+        await session.commit()
+
+        response = await client.post(
+            "/api/content/score-preview",
+            json={"clone_id": clone.id, "content_text": "Some content."},
+        )
+
+        assert response.status_code == 400
+        assert "DNA" in response.json()["detail"]
+
+    async def test_score_preview_empty_text_422(self, client: AsyncClient) -> None:
+        """POST /api/content/score-preview with empty text should return 422."""
+        response = await client.post(
+            "/api/content/score-preview",
+            json={"clone_id": "any-id", "content_text": ""},
+        )
+
+        assert response.status_code == 422
+
+
 class TestScoreEndpoint:
     async def test_score_returns_200(
         self,

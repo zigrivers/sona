@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useUIStore } from '@/stores/ui-store';
 import { buildContent } from '@/test/factories';
@@ -181,6 +181,76 @@ describe('ReviewPanel', () => {
 
     expect(screen.getByText('Original Input')).toBeInTheDocument();
     expect(screen.getByText('Write about testing.')).toBeInTheDocument();
+  });
+
+  it('auto-scores after debounce when text is edited', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let scorePreviewCallCount = 0;
+    server.use(
+      http.post('/api/content/score-preview', () => {
+        scorePreviewCallCount += 1;
+        return HttpResponse.json({
+          overall_score: 90,
+          dimensions: [
+            { name: 'Vocabulary', score: 90, feedback: 'Excellent' },
+            { name: 'Tone', score: 90, feedback: 'Great tone' },
+          ],
+        });
+      })
+    );
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderWithProviders(<ReviewPanel items={items} generationParams={generationParams} />);
+
+    // Advance past initial debounce (initial text "LinkedIn content" fires)
+    await vi.advanceTimersByTimeAsync(2500);
+    await waitFor(() => {
+      expect(scorePreviewCallCount).toBeGreaterThanOrEqual(1);
+    });
+
+    const countBefore = scorePreviewCallCount;
+
+    // Edit text — should trigger a new score-preview after debounce
+    const textarea = screen.getByDisplayValue('LinkedIn content');
+    await user.clear(textarea);
+    await user.type(textarea, 'Updated text');
+
+    // Advance past debounce again
+    await vi.advanceTimersByTimeAsync(2500);
+
+    await waitFor(() => {
+      expect(scorePreviewCallCount).toBeGreaterThan(countBefore);
+    });
+
+    vi.useRealTimers();
+  });
+
+  it('does not auto-score for empty text', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let scorePreviewCalled = false;
+    server.use(
+      http.post('/api/content/score-preview', () => {
+        scorePreviewCalled = true;
+        return HttpResponse.json({
+          overall_score: 0,
+          dimensions: [],
+        });
+      })
+    );
+
+    const emptyItems = [
+      buildContent({ id: 'c-empty', platform: 'linkedin', content_current: '' }),
+    ];
+
+    renderWithProviders(
+      <ReviewPanel items={emptyItems} generationParams={generationParams} />
+    );
+
+    await vi.advanceTimersByTimeAsync(2500);
+
+    expect(scorePreviewCalled).toBe(false);
+
+    vi.useRealTimers();
   });
 
   it('textarea remains editable in split view', async () => {

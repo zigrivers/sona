@@ -1,7 +1,17 @@
 import type { ColumnDef } from '@tanstack/react-table';
+import { MoreHorizontal, Repeat } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useGeneratorStore } from '@/stores/generator-store';
 import type { ContentResponse } from '@/types/api';
 import { PLATFORMS } from '@/types/platforms';
 
@@ -86,3 +96,37 @@ export const columns: ColumnDef<ContentRow>[] = [
     },
   },
 ];
+
+function RowActions({ row }: { row: ContentRow }) {
+  const navigate = useNavigate();
+  const setRepurpose = useGeneratorStore((s) => s.setRepurpose);
+
+  function handleRepurpose(e: React.MouseEvent) {
+    e.stopPropagation();
+    setRepurpose(row.content_current, row.clone_id, row.platform);
+    navigate('/create');
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+        <Button variant="ghost" size="icon" aria-label="Actions">
+          <MoreHorizontal className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuItem onClick={handleRepurpose}>
+          <Repeat className="mr-2 size-4" />
+          Repurpose
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export const actionsColumn: ColumnDef<ContentRow> = {
+  id: 'actions',
+  header: '',
+  enableSorting: false,
+  cell: ({ row }) => <RowActions row={row.original} />,
+};

@@ -79,6 +79,18 @@ export const contentHandlers = [
     );
   }),
 
+  http.post('/api/content/score-preview', () => {
+    return HttpResponse.json({
+      overall_score: 78,
+      dimensions: [
+        { name: 'Vocabulary', score: 80, feedback: 'Good match' },
+        { name: 'Tone', score: 75, feedback: 'Slightly off' },
+        { name: 'Structure', score: 82, feedback: 'Well organized' },
+        { name: 'Authenticity', score: 74, feedback: 'Needs work' },
+      ],
+    });
+  }),
+
   http.post('/api/content/:id/score', () => {
     return HttpResponse.json({
       overall_score: 78,

@@ -328,4 +328,48 @@ describe('CreatePage', () => {
     // Tooltip content with shortcut hint is present in DOM
     expect(screen.getByText(/⌘↵/)).toBeInTheDocument();
   });
+
+  it('pre-populates from repurpose state', async () => {
+    mockClones();
+
+    const { useGeneratorStore } = await import('@/stores/generator-store');
+    useGeneratorStore.setState({
+      lastUsedCloneId: 'c1',
+      repurposeText: 'Content to repurpose',
+      repurposeSourcePlatform: 'linkedin',
+      lastUsedProperties: null,
+    });
+
+    renderWithProviders(<CreatePage />);
+
+    // Input text should be pre-filled with repurpose text
+    await waitFor(() => {
+      const textarea = screen.getByPlaceholderText(/describe the content/i);
+      expect(textarea).toHaveValue('Content to repurpose');
+    });
+
+    // Platforms should be empty (user picks new target)
+    expect(screen.getByRole('checkbox', { name: /linkedin/i })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /twitter/i })).not.toBeChecked();
+  });
+
+  it('clears repurpose state after mount', async () => {
+    mockClones();
+
+    const { useGeneratorStore } = await import('@/stores/generator-store');
+    useGeneratorStore.setState({
+      lastUsedCloneId: 'c1',
+      repurposeText: 'Content to repurpose',
+      repurposeSourcePlatform: 'linkedin',
+      lastUsedProperties: null,
+    });
+
+    renderWithProviders(<CreatePage />);
+
+    await waitFor(() => {
+      const state = useGeneratorStore.getState();
+      expect(state.repurposeText).toBeNull();
+      expect(state.repurposeSourcePlatform).toBeNull();
+    });
+  });
 });
