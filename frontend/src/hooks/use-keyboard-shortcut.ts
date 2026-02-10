@@ -17,7 +17,7 @@ export function useKeyboardShortcut(
   key: string,
   modifiers: { meta?: boolean; shift?: boolean; alt?: boolean },
   callback: () => void,
-  options: ShortcutOptions = {},
+  options: ShortcutOptions = {}
 ) {
   const { enabled = true } = options;
 
