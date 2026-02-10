@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import anthropic
 import pytest
+from anthropic.types import TextBlock, TextDelta
 
 from app.exceptions import LLMAuthError, LLMRateLimitError
 from app.llm.anthropic import AnthropicProvider
@@ -11,20 +12,30 @@ from app.llm.anthropic import AnthropicProvider
 
 @pytest.fixture
 def provider() -> AnthropicProvider:
-    return AnthropicProvider(api_key="sk-ant-test-key", default_model="claude-sonnet-4-5-20250929")
+    return AnthropicProvider(
+        api_key="sk-ant-test-key",
+        default_model="claude-sonnet-4-5-20250929",
+    )
 
 
 MESSAGES = [{"role": "user", "content": "Hello"}]
+
+
+def _text_block(text: str) -> TextBlock:
+    return TextBlock(type="text", text=text)
 
 
 class TestComplete:
     async def test_returns_response_text(self, provider: AnthropicProvider) -> None:
         """complete() calls messages.create and returns text content."""
         mock_response = MagicMock()
-        mock_response.content = [MagicMock(text="Hello from Claude")]
+        mock_response.content = [_text_block("Hello from Claude")]
 
         with patch.object(
-            provider._client.messages, "create", new_callable=AsyncMock, return_value=mock_response
+            provider._client.messages,
+            "create",
+            new_callable=AsyncMock,
+            return_value=mock_response,
         ) as mock_create:
             result = await provider.complete(MESSAGES)
 
@@ -37,7 +48,7 @@ class TestComplete:
     async def test_uses_custom_model_and_params(self, provider: AnthropicProvider) -> None:
         """complete() passes through model, temperature, and max_tokens."""
         mock_response = MagicMock()
-        mock_response.content = [MagicMock(text="response")]
+        mock_response.content = [_text_block("response")]
 
         with patch.object(
             provider._client.messages,
@@ -101,19 +112,17 @@ class TestComplete:
 class TestStream:
     async def test_yields_chunks(self, provider: AnthropicProvider) -> None:
         """stream() yields text chunks from Anthropic streaming response."""
-        # Mock the streaming context manager
         mock_event1 = MagicMock()
         mock_event1.type = "content_block_delta"
-        mock_event1.delta = MagicMock(text="Hello ")
+        mock_event1.delta = TextDelta(type="text_delta", text="Hello ")
 
         mock_event2 = MagicMock()
         mock_event2.type = "content_block_delta"
-        mock_event2.delta = MagicMock(text="world")
+        mock_event2.delta = TextDelta(type="text_delta", text="world")
 
         mock_event3 = MagicMock()
         mock_event3.type = "message_stop"
 
-        # Create async iterator for the stream
         async def mock_stream_events():
             for event in [mock_event1, mock_event2, mock_event3]:
                 yield event
@@ -123,7 +132,11 @@ class TestStream:
         mock_stream.__aenter__ = AsyncMock(return_value=mock_stream)
         mock_stream.__aexit__ = AsyncMock(return_value=False)
 
-        with patch.object(provider._client.messages, "stream", return_value=mock_stream):
+        with patch.object(
+            provider._client.messages,
+            "stream",
+            return_value=mock_stream,
+        ):
             chunks = []
             async for chunk in provider.stream(MESSAGES):
                 chunks.append(chunk)
@@ -135,10 +148,13 @@ class TestTestConnection:
     async def test_returns_true_on_success(self, provider: AnthropicProvider) -> None:
         """test_connection() returns True when API responds successfully."""
         mock_response = MagicMock()
-        mock_response.content = [MagicMock(text="Hi")]
+        mock_response.content = [_text_block("Hi")]
 
         with patch.object(
-            provider._client.messages, "create", new_callable=AsyncMock, return_value=mock_response
+            provider._client.messages,
+            "create",
+            new_callable=AsyncMock,
+            return_value=mock_response,
         ):
             result = await provider.test_connection()
 
@@ -159,7 +175,7 @@ class TestTestConnection:
 
 class TestCountTokens:
     async def test_approximate_count(self, provider: AnthropicProvider) -> None:
-        """count_tokens() returns approximate count (1 token ≈ 4 chars)."""
+        """count_tokens() returns approximate count (1 token ~ 4 chars)."""
         result = await provider.count_tokens("Hello world! This is a test.")
         # 28 chars / 4 = 7
         assert result == 7

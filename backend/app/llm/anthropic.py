@@ -1,8 +1,10 @@
 """Anthropic LLM provider implementation."""
 
 from collections.abc import AsyncIterator
+from typing import cast
 
 import anthropic
+from anthropic.types import MessageParam, TextBlock, TextDelta
 
 from app.exceptions import LLMAuthError, LLMRateLimitError
 
@@ -37,7 +39,11 @@ class AnthropicProvider:
         except anthropic.RateLimitError as exc:
             raise LLMRateLimitError(provider="anthropic", detail=str(exc)) from exc
 
-        return response.content[0].text
+        # Extract text from the first TextBlock in the response.
+        for block in response.content:
+            if isinstance(block, TextBlock):
+                return block.text
+        return ""
 
     async def stream(
         self,
@@ -57,11 +63,11 @@ class AnthropicProvider:
             max_tokens=max_tokens,
         ) as stream:
             async for event in stream:
-                if event.type == "content_block_delta":
+                if event.type == "content_block_delta" and isinstance(event.delta, TextDelta):
                     yield event.delta.text
 
     async def count_tokens(self, text: str) -> int:
-        """Approximate token count (1 token ≈ 4 chars)."""
+        """Approximate token count (1 token ~ 4 chars)."""
         return len(text) // 4
 
     async def test_connection(self) -> bool:
@@ -69,7 +75,7 @@ class AnthropicProvider:
         try:
             await self._client.messages.create(
                 model=self._default_model,
-                messages=[{"role": "user", "content": "Hi"}],
+                messages=[cast(MessageParam, {"role": "user", "content": "Hi"})],
                 max_tokens=1,
             )
         except Exception:
@@ -79,17 +85,17 @@ class AnthropicProvider:
     @staticmethod
     def _split_system(
         messages: list[dict[str, str]],
-    ) -> tuple[str, list[dict[str, str]]]:
+    ) -> tuple[str, list[MessageParam]]:
         """Extract the system message from the message list.
 
         Anthropic Messages API takes system as a top-level parameter,
         not as a message in the list.
         """
         system = ""
-        user_messages = []
+        user_messages: list[MessageParam] = []
         for msg in messages:
             if msg["role"] == "system":
                 system = msg["content"]
             else:
-                user_messages.append(msg)
+                user_messages.append(cast(MessageParam, msg))
         return system, user_messages
