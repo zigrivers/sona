@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import { CloneHeader } from '@/components/clones/CloneHeader';
 import { DnaDisplay } from '@/components/clones/DnaDisplay';
+import { QuickGenerate } from '@/components/clones/QuickGenerate';
 import { SampleList } from '@/components/samples/SampleList';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -64,9 +65,7 @@ export function CloneDetailPage() {
         </TabsContent>
 
         <TabsContent value="generated">
-          <p className="text-muted-foreground py-8 text-center">
-            Generated content will appear here.
-          </p>
+          <QuickGenerate cloneId={id!} cloneName={clone.name} />
         </TabsContent>
       </Tabs>
     </div>

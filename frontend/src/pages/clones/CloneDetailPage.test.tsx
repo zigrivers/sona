@@ -83,7 +83,7 @@ describe('CloneDetailPage', () => {
     });
 
     await user.click(screen.getByRole('tab', { name: /generated content/i }));
-    expect(screen.getByText(/generated content will appear/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/what.*write/i)).toBeInTheDocument();
   });
 
   it('calls update when name is edited', async () => {
