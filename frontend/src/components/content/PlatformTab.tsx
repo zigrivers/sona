@@ -19,6 +19,7 @@ import { type PlatformKey, PLATFORMS } from '@/types/platforms';
 
 import { AiDetectionPreview } from './AiDetectionPreview';
 import { AuthenticityScore } from './AuthenticityScore';
+import { BeforeAfterView } from './BeforeAfterView';
 import { DimensionBreakdown } from './DimensionBreakdown';
 import { ExportMenu } from './ExportMenu';
 import { FeedbackInput } from './FeedbackInput';
@@ -41,6 +42,8 @@ interface PlatformTabProps {
   isFeedbackRegenerating?: boolean;
   onPartialRegen?: (start: number, end: number) => void;
   isPartialRegenerating?: boolean;
+  showInput?: boolean;
+  inputText?: string;
 }
 
 export function PlatformTab({
@@ -61,6 +64,8 @@ export function PlatformTab({
   isFeedbackRegenerating = false,
   onPartialRegen,
   isPartialRegenerating = false,
+  showInput = false,
+  inputText,
 }: PlatformTabProps) {
   const [showThread, setShowThread] = useState(false);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
@@ -82,24 +87,43 @@ export function PlatformTab({
 
   return (
     <div className="space-y-4">
-      {/* Textarea */}
-      <Textarea
-        ref={textareaRef}
-        value={editedText}
-        onChange={(e) => onTextChange(e.target.value)}
-        onSelect={(e) => {
-          const target = e.target as HTMLTextAreaElement;
-          if (target.selectionStart !== target.selectionEnd) {
-            setSelectionStart(target.selectionStart);
-            setSelectionEnd(target.selectionEnd);
-          } else {
-            setSelectionStart(null);
-            setSelectionEnd(null);
-          }
-        }}
-        rows={8}
-        className="resize-y font-mono text-sm"
-      />
+      {/* Content editor */}
+      {showInput && inputText ? (
+        <BeforeAfterView
+          inputText={inputText}
+          editedText={editedText}
+          onTextChange={onTextChange}
+          textareaRef={textareaRef}
+          onSelect={(e) => {
+            const target = e.target as HTMLTextAreaElement;
+            if (target.selectionStart !== target.selectionEnd) {
+              setSelectionStart(target.selectionStart);
+              setSelectionEnd(target.selectionEnd);
+            } else {
+              setSelectionStart(null);
+              setSelectionEnd(null);
+            }
+          }}
+        />
+      ) : (
+        <Textarea
+          ref={textareaRef}
+          value={editedText}
+          onChange={(e) => onTextChange(e.target.value)}
+          onSelect={(e) => {
+            const target = e.target as HTMLTextAreaElement;
+            if (target.selectionStart !== target.selectionEnd) {
+              setSelectionStart(target.selectionStart);
+              setSelectionEnd(target.selectionEnd);
+            } else {
+              setSelectionStart(null);
+              setSelectionEnd(null);
+            }
+          }}
+          rows={8}
+          className="resize-y font-mono text-sm"
+        />
+      )}
 
       {/* Character/word count bar */}
       <div className="space-y-2">

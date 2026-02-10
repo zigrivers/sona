@@ -1,8 +1,9 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
+import { useUIStore } from '@/stores/ui-store';
 import { buildContent } from '@/test/factories';
 import { server } from '@/test/handlers';
 import { renderWithProviders } from '@/test/render';
@@ -21,6 +22,10 @@ const generationParams = {
 };
 
 describe('ReviewPanel', () => {
+  beforeEach(() => {
+    useUIStore.setState({ showInputPanel: false });
+  });
+
   it('renders a tab per platform', () => {
     renderWithProviders(<ReviewPanel items={items} generationParams={generationParams} />);
     expect(screen.getByRole('tab', { name: /linkedin/i })).toBeInTheDocument();
@@ -159,5 +164,35 @@ describe('ReviewPanel', () => {
     // Switch back to LinkedIn
     await user.click(screen.getByRole('tab', { name: /linkedin/i }));
     expect(screen.getByDisplayValue('Edited LinkedIn')).toBeInTheDocument();
+  });
+
+  it('toggle renders and defaults to off', () => {
+    renderWithProviders(<ReviewPanel items={items} generationParams={generationParams} />);
+    const toggle = screen.getByRole('switch', { name: /show input/i });
+    expect(toggle).toBeInTheDocument();
+    expect(toggle).not.toBeChecked();
+  });
+
+  it('clicking toggle shows original input text', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ReviewPanel items={items} generationParams={generationParams} />);
+
+    await user.click(screen.getByRole('switch', { name: /show input/i }));
+
+    expect(screen.getByText('Original Input')).toBeInTheDocument();
+    expect(screen.getByText('Write about testing.')).toBeInTheDocument();
+  });
+
+  it('textarea remains editable in split view', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ReviewPanel items={items} generationParams={generationParams} />);
+
+    await user.click(screen.getByRole('switch', { name: /show input/i }));
+
+    const textarea = screen.getByDisplayValue('LinkedIn content');
+    expect(textarea).toBeInTheDocument();
+    await user.clear(textarea);
+    await user.type(textarea, 'Edited');
+    expect(textarea).toHaveValue('Edited');
   });
 });

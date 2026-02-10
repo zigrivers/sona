@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   useDetectAI,
@@ -10,6 +12,7 @@ import {
   useScoreContent,
   useUpdateContent,
 } from '@/hooks/use-content';
+import { useUIStore } from '@/stores/ui-store';
 import type { AuthenticityScoreResponse, ContentResponse, DetectionResponse } from '@/types/api';
 import { type PlatformKey, PLATFORMS } from '@/types/platforms';
 
@@ -33,6 +36,9 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
     }
     return initial;
   });
+
+  const showInputPanel = useUIStore((s) => s.showInputPanel);
+  const setShowInputPanel = useUIStore((s) => s.setShowInputPanel);
 
   const [scoreResults, setScoreResults] = useState<Record<string, AuthenticityScoreResponse>>({});
   const [detectionResults, setDetectionResults] = useState<Record<string, DetectionResponse>>({});
@@ -140,6 +146,15 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
         ))}
       </TabsList>
 
+      <div className="flex items-center gap-2 py-2">
+        <Switch
+          id="show-input"
+          checked={showInputPanel}
+          onCheckedChange={setShowInputPanel}
+        />
+        <Label htmlFor="show-input">Show Input</Label>
+      </div>
+
       {localItems.map((item) => (
         <TabsContent key={item.id} value={item.platform}>
           <PlatformTab
@@ -160,6 +175,8 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
             isFeedbackRegenerating={feedbackRegenMutation.isPending}
             onPartialRegen={(start, end) => handlePartialRegen(item, start, end)}
             isPartialRegenerating={partialRegenMutation.isPending}
+            showInput={showInputPanel}
+            inputText={item.input_text}
           />
         </TabsContent>
       ))}
