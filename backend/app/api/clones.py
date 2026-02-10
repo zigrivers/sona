@@ -7,12 +7,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_llm_provider, get_session
-from app.exceptions import AnalysisFailedError, CloneNotFoundError
+from app.exceptions import AnalysisFailedError, CloneNotFoundError, MergeFailedError
 from app.models.clone import VoiceClone
 from app.schemas.clone import CloneCreate, CloneListResponse, CloneResponse, CloneUpdate
 from app.schemas.dna import DNAResponse, DNAVersionListResponse, DNAVersionResponse
 from app.services.clone_service import CloneService
 from app.services.dna_service import DNAService
+from app.services.merge_service import MergeService
 from app.services.scoring_service import calculate_confidence
 
 router = APIRouter(prefix="/clones", tags=["clones"])
@@ -39,6 +40,44 @@ def _to_response(clone: VoiceClone) -> CloneResponse:
             "confidence_score": calculate_confidence(clone),
         }
     )
+
+
+# ── Merge Endpoint ────────────────────────────────────────────
+
+
+class MergeSourceItem(BaseModel):
+    clone_id: str
+    weights: dict[str, int]
+
+
+class MergeRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    source_clones: list[MergeSourceItem] = Field(min_length=2, max_length=5)
+
+
+@router.post("/merge", status_code=201)
+async def merge_clones(data: MergeRequest, session: Session) -> CloneResponse:
+    provider = await get_llm_provider()
+    svc = MergeService(session)
+    try:
+        clone = await svc.merge(
+            name=data.name,
+            source_clones=[s.model_dump() for s in data.source_clones],
+            provider=provider,
+            model="gpt-4o",
+        )
+    except CloneNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.detail) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except MergeFailedError as exc:
+        raise HTTPException(status_code=502, detail=exc.detail) from exc
+    await session.commit()
+    await session.refresh(clone)
+    return _to_response(clone)
+
+
+# ── Clone CRUD ────────────────────────────────────────────────
 
 
 @router.post("", status_code=201)

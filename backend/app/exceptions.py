@@ -94,6 +94,14 @@ class PresetNotFoundError(SonaError):
         )
 
 
+class MergeFailedError(SonaError):
+    def __init__(self, reason: str) -> None:
+        super().__init__(
+            detail=f"Voice merge failed: {reason}",
+            code="MERGE_FAILED",
+        )
+
+
 class DemoCloneReadonlyError(SonaError):
     def __init__(self, clone_id: str) -> None:
         super().__init__(

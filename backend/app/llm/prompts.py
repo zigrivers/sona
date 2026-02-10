@@ -160,6 +160,53 @@ def build_partial_regen_prompt(
     ]
 
 
+def build_merge_prompt(
+    source_dnas: list[dict[str, object]],
+) -> list[dict[str, str]]:
+    """Build a message list for merging multiple Voice DNAs.
+
+    Args:
+        source_dnas: List of dicts with keys: name, dna_data, weights.
+
+    Returns:
+        A list of message dicts with role/content keys.
+    """
+    import json
+
+    system_content = "\n\n".join(
+        [
+            "You are an expert linguist specializing in voice profile analysis.",
+            "You will receive multiple Voice DNA profiles with associated weight distributions.",
+            "Your job is to blend them into a single unified Voice DNA profile"
+            " that reflects the weighted combination of all source voices.",
+            "Higher weight means that source's traits should dominate for that category.",
+            "Return ONLY a JSON object with two keys:\n"
+            '- "dna": the blended voice profile (same structure as each source DNA)\n'
+            '- "prominence_scores": category-level prominence scores (0-100)',
+        ]
+    )
+
+    sources_payload: list[dict[str, object]] = []
+    for src in source_dnas:
+        sources_payload.append(
+            {
+                "name": src["name"],
+                "dna": src["dna_data"],
+                "weights": src["weights"],
+            }
+        )
+
+    user_content = (
+        "Blend the following voice profiles according to their weights:\n\n"
+        + json.dumps(sources_payload, indent=2)
+    )
+
+    return [
+        {"role": "system", "content": system_content},
+        {"role": "user", "content": user_content},
+    ]
+
+
 _SCORING_DIMENSIONS = [
     "vocabulary_match",
     "sentence_flow",
