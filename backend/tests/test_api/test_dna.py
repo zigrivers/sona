@@ -200,3 +200,86 @@ class TestListDNAVersionsEndpoint:
         resp = await client.get(f"/api/clones/{clone_id}/dna/versions")
         assert resp.status_code == 200
         assert resp.json()["items"] == []
+
+
+class TestManualEditEndpoint:
+    async def test_manual_edit_returns_200(self, client: AsyncClient) -> None:
+        """PUT /api/clones/{id}/dna returns 200 with new version."""
+        clone_id = await _create_clone_with_samples(client)
+
+        # First, create initial DNA via analyze
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=MOCK_DNA_RESPONSE)
+        with patch("app.api.clones.get_llm_provider", return_value=mock_provider):
+            await client.post(
+                f"/api/clones/{clone_id}/analyze",
+                json={"model": "gpt-4o"},
+            )
+
+        # Now manual edit
+        resp = await client.put(
+            f"/api/clones/{clone_id}/dna",
+            json={
+                "data": {"vocabulary": {"level": "expert"}},
+                "prominence_scores": {"vocabulary": 95},
+            },
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["version_number"] == 2
+        assert data["trigger"] == "manual_edit"
+        assert data["model_used"] == "manual"
+
+    async def test_manual_edit_no_existing_dna_returns_400(self, client: AsyncClient) -> None:
+        """PUT /api/clones/{id}/dna returns 400 when no DNA exists."""
+        resp = await client.post("/api/clones", json={"name": "No DNA"})
+        clone_id = resp.json()["id"]
+
+        resp = await client.put(
+            f"/api/clones/{clone_id}/dna",
+            json={"data": {"vocabulary": {}}},
+        )
+
+        assert resp.status_code == 400
+
+
+class TestRevertEndpoint:
+    async def test_revert_returns_201(self, client: AsyncClient) -> None:
+        """POST /api/clones/{id}/dna/revert/{version} returns 201."""
+        clone_id = await _create_clone_with_samples(client)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=MOCK_DNA_RESPONSE)
+        with patch("app.api.clones.get_llm_provider", return_value=mock_provider):
+            await client.post(
+                f"/api/clones/{clone_id}/analyze",
+                json={"model": "gpt-4o"},
+            )
+            await client.post(
+                f"/api/clones/{clone_id}/analyze",
+                json={"model": "gpt-4o"},
+            )
+
+        resp = await client.post(f"/api/clones/{clone_id}/dna/revert/1")
+
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["version_number"] == 3
+        assert data["trigger"] == "revert"
+
+    async def test_revert_missing_version_returns_400(self, client: AsyncClient) -> None:
+        """POST /api/clones/{id}/dna/revert/{version} returns 400 for bad version."""
+        clone_id = await _create_clone_with_samples(client)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=MOCK_DNA_RESPONSE)
+        with patch("app.api.clones.get_llm_provider", return_value=mock_provider):
+            await client.post(
+                f"/api/clones/{clone_id}/analyze",
+                json={"model": "gpt-4o"},
+            )
+
+        resp = await client.post(f"/api/clones/{clone_id}/dna/revert/99")
+
+        assert resp.status_code == 400

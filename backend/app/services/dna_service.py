@@ -1,10 +1,12 @@
 """Voice DNA analysis service — orchestrates LLM analysis and version management."""
 
 import json
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.constants import MAX_DNA_VERSIONS
 from app.exceptions import AnalysisFailedError, CloneNotFoundError
 from app.llm.base import LLMProvider
 from app.llm.prompts import build_dna_analysis_prompt
@@ -89,6 +91,64 @@ class DNAService:
         self._session.add(dna_version)
         await self._session.flush()
 
+        await self._prune_versions(clone_id)
+        return dna_version
+
+    async def manual_edit(
+        self,
+        clone_id: str,
+        *,
+        data: dict[str, Any],
+        prominence_scores: dict[str, Any] | None = None,
+    ) -> VoiceDNAVersion:
+        """Create a new DNA version from manual edits."""
+        current = await self.get_current(clone_id)
+        if current is None:
+            msg = f"Clone '{clone_id}' has no existing DNA to edit"
+            raise ValueError(msg)
+
+        version_number = await self._next_version_number(clone_id)
+        dna_version = VoiceDNAVersion(
+            clone_id=clone_id,
+            version_number=version_number,
+            data=data,
+            prominence_scores=prominence_scores,
+            trigger="manual_edit",
+            model_used="manual",
+        )
+        self._session.add(dna_version)
+        await self._session.flush()
+
+        await self._prune_versions(clone_id)
+        return dna_version
+
+    async def revert(self, clone_id: str, target_version: int) -> VoiceDNAVersion:
+        """Revert DNA to a previous version (creates a new version, non-destructive)."""
+        stmt = select(VoiceDNAVersion).where(
+            VoiceDNAVersion.clone_id == clone_id,
+            VoiceDNAVersion.version_number == target_version,
+        )
+        result = await self._session.execute(stmt)
+        old_version = result.scalar_one_or_none()
+        if old_version is None:
+            msg = f"Version {target_version} not found for clone '{clone_id}'"
+            raise ValueError(msg)
+
+        version_number = await self._next_version_number(clone_id)
+        old_data = cast(dict[str, Any], old_version.data)  # pyright: ignore[reportUnknownMemberType]
+        old_scores = cast(dict[str, Any] | None, old_version.prominence_scores)  # pyright: ignore[reportUnknownMemberType]
+        dna_version = VoiceDNAVersion(
+            clone_id=clone_id,
+            version_number=version_number,
+            data=old_data,
+            prominence_scores=old_scores,
+            trigger="revert",
+            model_used=old_version.model_used,
+        )
+        self._session.add(dna_version)
+        await self._session.flush()
+
+        await self._prune_versions(clone_id)
         return dna_version
 
     async def get_current(self, clone_id: str) -> VoiceDNAVersion | None:
@@ -125,3 +185,18 @@ class DNAService:
         result = await self._session.execute(stmt)
         current = result.scalar_one_or_none()
         return (current or 0) + 1
+
+    async def _prune_versions(self, clone_id: str) -> None:
+        """Delete oldest versions if count exceeds MAX_DNA_VERSIONS."""
+        stmt = (
+            select(VoiceDNAVersion)
+            .where(VoiceDNAVersion.clone_id == clone_id)
+            .order_by(VoiceDNAVersion.version_number.desc())
+        )
+        result = await self._session.execute(stmt)
+        versions = list(result.scalars().all())
+
+        if len(versions) > MAX_DNA_VERSIONS:
+            for v in versions[MAX_DNA_VERSIONS:]:
+                await self._session.delete(v)
+            await self._session.flush()
