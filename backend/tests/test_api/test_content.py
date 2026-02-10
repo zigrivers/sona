@@ -1,0 +1,200 @@
+"""Tests for content generation API endpoints."""
+
+from collections.abc import AsyncGenerator
+from typing import Any
+from unittest.mock import AsyncMock
+
+import nanoid
+import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import get_llm_provider
+from app.main import app
+from app.models.clone import VoiceClone
+from app.models.dna import VoiceDNAVersion
+
+
+async def _create_clone_with_dna(
+    session: AsyncSession,
+) -> VoiceClone:
+    """Create a clone with voice DNA for testing."""
+    clone = VoiceClone(id=nanoid.generate(), name="Test Clone")
+    session.add(clone)
+    await session.flush()
+
+    dna = VoiceDNAVersion(
+        id=nanoid.generate(),
+        clone_id=clone.id,
+        version_number=1,
+        data={"tone": "casual", "humor": "dry"},
+        trigger="initial_analysis",
+        model_used="test-model",
+    )
+    session.add(dna)
+    await session.commit()
+    return clone
+
+
+@pytest.fixture
+def mock_provider() -> AsyncMock:
+    """Create a mock LLM provider."""
+    provider = AsyncMock()
+    provider.complete = AsyncMock(return_value="Generated content here.")
+    return provider
+
+
+@pytest.fixture(autouse=True)
+def override_llm_provider(mock_provider: AsyncMock) -> AsyncGenerator[None]:
+    """Override the LLM provider dependency for all tests in this module."""
+
+    async def _override() -> Any:
+        return mock_provider
+
+    app.dependency_overrides[get_llm_provider] = _override
+    yield
+    app.dependency_overrides.pop(get_llm_provider, None)
+
+
+class TestGenerateEndpoint:
+    async def test_generate_returns_201(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """POST /api/content/generate should return 201 with generated content."""
+        clone = await _create_clone_with_dna(session)
+        mock_provider.complete = AsyncMock(return_value="Generated blog content here.")
+
+        response = await client.post(
+            "/api/content/generate",
+            json={
+                "clone_id": clone.id,
+                "platforms": ["blog"],
+                "input_text": "Write about testing.",
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert len(data["items"]) == 1
+        assert data["items"][0]["platform"] == "blog"
+        assert data["items"][0]["content_current"] == "Generated blog content here."
+        assert data["items"][0]["status"] == "draft"
+        assert data["items"][0]["word_count"] == 4
+        assert data["items"][0]["char_count"] == len("Generated blog content here.")
+
+    async def test_generate_multiple_platforms(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """POST /api/content/generate with multiple platforms should return all."""
+        clone = await _create_clone_with_dna(session)
+        mock_provider.complete = AsyncMock(return_value="Platform content.")
+
+        response = await client.post(
+            "/api/content/generate",
+            json={
+                "clone_id": clone.id,
+                "platforms": ["twitter", "linkedin"],
+                "input_text": "Write about AI.",
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert len(data["items"]) == 2
+        platforms = {item["platform"] for item in data["items"]}
+        assert platforms == {"twitter", "linkedin"}
+
+    async def test_generate_without_dna_returns_400(
+        self, client: AsyncClient, session: AsyncSession
+    ) -> None:
+        """POST /api/content/generate for clone without DNA should return 400."""
+        clone = VoiceClone(id=nanoid.generate(), name="No DNA Clone")
+        session.add(clone)
+        await session.commit()
+
+        response = await client.post(
+            "/api/content/generate",
+            json={
+                "clone_id": clone.id,
+                "platforms": ["blog"],
+                "input_text": "Write something.",
+            },
+        )
+
+        assert response.status_code == 400
+        assert "DNA" in response.json()["detail"]
+
+    async def test_generate_clone_not_found(self, client: AsyncClient) -> None:
+        """POST /api/content/generate for non-existent clone should return 404."""
+        response = await client.post(
+            "/api/content/generate",
+            json={
+                "clone_id": "nonexistent-id",
+                "platforms": ["blog"],
+                "input_text": "Write something.",
+            },
+        )
+
+        assert response.status_code == 404
+
+    async def test_generate_with_properties(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """POST /api/content/generate with properties should pass them through."""
+        clone = await _create_clone_with_dna(session)
+        mock_provider.complete = AsyncMock(return_value="Formal content.")
+
+        response = await client.post(
+            "/api/content/generate",
+            json={
+                "clone_id": clone.id,
+                "platforms": ["email"],
+                "input_text": "Write an email.",
+                "properties": {"tone": "formal"},
+            },
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["items"][0]["generation_properties"] == {"tone": "formal"}
+
+
+class TestStreamEndpoint:
+    async def test_stream_returns_sse(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """POST /api/content/generate/stream should return SSE events."""
+        clone = await _create_clone_with_dna(session)
+
+        async def mock_stream(messages: list[dict[str, str]], **kwargs: Any) -> Any:
+            for chunk in ["Hello ", "world ", "streaming."]:
+                yield chunk
+
+        mock_provider.stream = mock_stream
+
+        response = await client.post(
+            "/api/content/generate/stream",
+            json={
+                "clone_id": clone.id,
+                "platform": "blog",
+                "input_text": "Write a blog post.",
+            },
+        )
+
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers.get("content-type", "")
+        body = response.text
+        assert "Hello " in body
+        assert "streaming." in body
