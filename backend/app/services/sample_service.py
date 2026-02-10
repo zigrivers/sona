@@ -49,6 +49,15 @@ class SampleService:
         """Create a new writing sample for a clone."""
         await self._validate_clone_exists(clone_id)
 
+        # Reject samples for merged clones
+        result = await self.session.execute(
+            select(VoiceClone.type).where(VoiceClone.id == clone_id)
+        )
+        clone_type = result.scalar_one()
+        if clone_type == "merged":
+            msg = "Cannot add samples to a merged clone"
+            raise ValueError(msg)
+
         word_count = _calculate_word_count(data.content)
         length_category = _determine_length_category(word_count)
 
