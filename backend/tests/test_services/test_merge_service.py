@@ -43,9 +43,7 @@ MOCK_MERGE_RESPONSE = json.dumps(
 )
 
 
-async def _setup_source_clones(
-    session: AsyncSession, count: int = 2
-) -> list[VoiceClone]:
+async def _setup_source_clones(session: AsyncSession, count: int = 2) -> list[VoiceClone]:
     """Create N clones each with DNA version 1."""
     clones = []
     for i in range(count):
@@ -118,9 +116,7 @@ class TestMerge:
             model="gpt-4o",
         )
 
-        stmt = select(MergedCloneSource).where(
-            MergedCloneSource.merged_clone_id == result.id
-        )
+        stmt = select(MergedCloneSource).where(MergedCloneSource.merged_clone_id == result.id)
         rows = (await session.execute(stmt)).scalars().all()
         assert len(rows) == 2
 
@@ -131,9 +127,7 @@ class TestMerge:
         for row in rows:
             assert "vocabulary" in row.weights
 
-    async def test_merge_sends_dna_and_weights_to_llm(
-        self, session: AsyncSession
-    ) -> None:
+    async def test_merge_sends_dna_and_weights_to_llm(self, session: AsyncSession) -> None:
         """provider.complete() call contains all source DNAs and weight info."""
         clones = await _setup_source_clones(session, count=2)
         provider = AsyncMock()
@@ -208,9 +202,7 @@ class TestMerge:
         with pytest.raises(ValueError, match="Cannot add samples to a merged clone"):
             await sample_svc.create(merged.id, data)
 
-    async def test_source_deletion_shows_deleted_label(
-        self, session: AsyncSession
-    ) -> None:
+    async def test_source_deletion_shows_deleted_label(self, session: AsyncSession) -> None:
         """After deleting a source clone, MergedCloneSource still exists but source is gone."""
         clones = await _setup_source_clones(session, count=2)
         provider = AsyncMock()
@@ -233,21 +225,15 @@ class TestMerge:
         await session.flush()
 
         # Lineage records should still exist for the merged clone
-        stmt = select(MergedCloneSource).where(
-            MergedCloneSource.merged_clone_id == merged.id
-        )
+        stmt = select(MergedCloneSource).where(MergedCloneSource.merged_clone_id == merged.id)
         rows = list((await session.execute(stmt)).scalars().all())
         assert len(rows) == 2
 
         # The source clone should be gone
-        result = await session.execute(
-            select(VoiceClone).where(VoiceClone.id == deleted_id)
-        )
+        result = await session.execute(select(VoiceClone).where(VoiceClone.id == deleted_id))
         assert result.scalar_one_or_none() is None
 
-    async def test_merge_failure_no_clone_created(
-        self, session: AsyncSession
-    ) -> None:
+    async def test_merge_failure_no_clone_created(self, session: AsyncSession) -> None:
         """LLM raises exception — no clone or DNA records should exist."""
         clones = await _setup_source_clones(session, count=2)
         provider = AsyncMock()
@@ -270,9 +256,7 @@ class TestMerge:
         result = await session.execute(stmt)
         assert result.scalar_one_or_none() is None
 
-    async def test_merge_with_nonexistent_source_raises(
-        self, session: AsyncSession
-    ) -> None:
+    async def test_merge_with_nonexistent_source_raises(self, session: AsyncSession) -> None:
         """merge raises CloneNotFoundError when a source clone doesn't exist."""
         clones = await _setup_source_clones(session, count=1)
         provider = AsyncMock()
@@ -290,9 +274,7 @@ class TestMerge:
                 model="gpt-4o",
             )
 
-    async def test_merge_source_without_dna_raises(
-        self, session: AsyncSession
-    ) -> None:
+    async def test_merge_source_without_dna_raises(self, session: AsyncSession) -> None:
         """merge raises ValueError when a source clone has no DNA."""
         clone_with_dna = (await _setup_source_clones(session, count=1))[0]
 

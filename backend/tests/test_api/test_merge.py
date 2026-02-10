@@ -21,9 +21,7 @@ MOCK_MERGE_RESPONSE = json.dumps(
 )
 
 
-async def _create_source_clone(
-    session: AsyncSession, name: str = "Source"
-) -> VoiceClone:
+async def _create_source_clone(session: AsyncSession, name: str = "Source") -> VoiceClone:
     """Create a source clone with DNA and a sample."""
     clone = VoiceClone(name=name)
     session.add(clone)
