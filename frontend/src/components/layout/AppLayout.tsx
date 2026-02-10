@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 
 import { CommandPalette } from '@/components/shared/CommandPalette';
+import { ShortcutHelp } from '@/components/shared/ShortcutHelp';
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 import { Header } from './Header';
@@ -19,6 +20,7 @@ export function AppLayout() {
         </main>
       </div>
       <CommandPalette />
+      <ShortcutHelp />
     </div>
   );
 }

@@ -9,11 +9,13 @@ interface UIState {
   hideDemoClones: boolean;
   showInputPanel: boolean;
   commandPaletteOpen: boolean;
+  shortcutHelpOpen: boolean;
   setTheme: (theme: Theme) => void;
   toggleSidebar: () => void;
   setHideDemoClones: (hide: boolean) => void;
   setShowInputPanel: (show: boolean) => void;
   setCommandPaletteOpen: (open: boolean) => void;
+  setShortcutHelpOpen: (open: boolean) => void;
 }
 
 function applyTheme(theme: Theme) {
@@ -32,6 +34,7 @@ export const useUIStore = create<UIState>()(
       hideDemoClones: false,
       showInputPanel: false,
       commandPaletteOpen: false,
+      shortcutHelpOpen: false,
       setTheme: (theme) => {
         applyTheme(theme);
         set({ theme });
@@ -40,6 +43,7 @@ export const useUIStore = create<UIState>()(
       setHideDemoClones: (hide) => set({ hideDemoClones: hide }),
       setShowInputPanel: (show) => set({ showInputPanel: show }),
       setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
+      setShortcutHelpOpen: (open) => set({ shortcutHelpOpen: open }),
     }),
     {
       name: 'sona-ui',

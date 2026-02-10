@@ -11,6 +11,7 @@ describe('useUIStore', () => {
       hideDemoClones: false,
       showInputPanel: false,
       commandPaletteOpen: false,
+      shortcutHelpOpen: false,
     });
     document.documentElement.classList.remove('dark');
     localStorage.clear();
@@ -79,5 +80,17 @@ describe('useUIStore', () => {
 
     useUIStore.getState().setCommandPaletteOpen(false);
     expect(useUIStore.getState().commandPaletteOpen).toBe(false);
+  });
+
+  it('defaults shortcutHelpOpen to false', () => {
+    expect(useUIStore.getState().shortcutHelpOpen).toBe(false);
+  });
+
+  it('setShortcutHelpOpen toggles the state', () => {
+    useUIStore.getState().setShortcutHelpOpen(true);
+    expect(useUIStore.getState().shortcutHelpOpen).toBe(true);
+
+    useUIStore.getState().setShortcutHelpOpen(false);
+    expect(useUIStore.getState().shortcutHelpOpen).toBe(false);
   });
 });
