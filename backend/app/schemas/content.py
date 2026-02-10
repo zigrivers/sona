@@ -62,6 +62,21 @@ class ContentListResponse(BaseModel):
     total: int
 
 
+class ContentVersionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    version_number: int
+    content_text: str
+    trigger: str
+    word_count: int
+    created_at: datetime
+
+
+class ContentVersionListResponse(BaseModel):
+    items: list[ContentVersionResponse]
+
+
 class GenerateRequest(BaseModel):
     clone_id: str
     platform: Platform
