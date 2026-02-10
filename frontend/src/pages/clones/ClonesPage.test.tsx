@@ -55,9 +55,7 @@ const mergedClone = buildClone({
 function setupClones(clones = [originalClone, mergedClone, demoClone]) {
   mockProvidersConfigured();
   server.use(
-    http.get('/api/clones', () =>
-      HttpResponse.json({ items: clones, total: clones.length })
-    )
+    http.get('/api/clones', () => HttpResponse.json({ items: clones, total: clones.length }))
   );
 }
 
@@ -125,7 +123,9 @@ describe('ClonesPage', () => {
       expect(screen.getByText('Alice Smith')).toBeInTheDocument();
     });
 
-    const links = screen.getAllByRole('link').filter((link) => link.getAttribute('href')?.startsWith('/clones/'));
+    const links = screen
+      .getAllByRole('link')
+      .filter((link) => link.getAttribute('href')?.startsWith('/clones/'));
     const names = links
       .map((link) => {
         const match = within(link).queryByText(/Alice Smith|Bob Jones|Demo Writer/);

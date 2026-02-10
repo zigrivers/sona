@@ -45,7 +45,7 @@ export function CloneCard({ clone }: CloneCardProps) {
 
   return (
     <Link to={`/clones/${clone.id}`} className="block focus-visible:outline-none">
-      <Card className="cursor-pointer transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
+      <Card className="focus-within:ring-ring cursor-pointer transition-shadow focus-within:ring-2 hover:shadow-md">
         <CardHeader className="flex-row items-center gap-3">
           <Avatar size="lg">
             <AvatarFallback className={cn(colorClass)}>{getInitials(clone.name)}</AvatarFallback>
@@ -55,7 +55,7 @@ export function CloneCard({ clone }: CloneCardProps) {
             {getTypeBadge(clone.type)}
           </div>
         </CardHeader>
-        <CardContent className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+        <CardContent className="text-muted-foreground flex flex-wrap items-center gap-3 text-sm">
           <ConfidenceBadge score={clone.confidence_score} />
           <span>{formatSampleCount(clone.sample_count)}</span>
           <span>Updated {formatRelativeTime(clone.updated_at)}</span>

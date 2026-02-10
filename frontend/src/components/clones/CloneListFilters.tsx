@@ -34,7 +34,7 @@ export function CloneListFilters({
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-3">
         <div className="relative w-64">
-          <Search className="text-muted-foreground absolute left-2.5 top-1/2 size-4 -translate-y-1/2" />
+          <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
           <Input
             placeholder="Search clones..."
             value={searchQuery}
@@ -58,11 +58,7 @@ export function CloneListFilters({
         </Select>
       </div>
       <div className="flex items-center gap-2">
-        <Switch
-          id="hide-demos"
-          checked={hideDemos}
-          onCheckedChange={onHideDemosChange}
-        />
+        <Switch id="hide-demos" checked={hideDemos} onCheckedChange={onHideDemosChange} />
         <Label htmlFor="hide-demos">Hide demo clones</Label>
       </div>
     </div>

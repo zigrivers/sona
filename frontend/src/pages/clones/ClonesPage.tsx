@@ -3,10 +3,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { CloneCard } from '@/components/clones/CloneCard';
-import {
-  CloneListFilters,
-  type CloneTypeFilter,
-} from '@/components/clones/CloneListFilters';
+import { CloneListFilters, type CloneTypeFilter } from '@/components/clones/CloneListFilters';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -30,8 +27,7 @@ export function ClonesPage() {
 
     return cloneData.items
       .filter((c) => {
-        if (searchQuery && !c.name.toLowerCase().includes(searchQuery.toLowerCase()))
-          return false;
+        if (searchQuery && !c.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
         if (typeFilter !== 'all' && c.type !== typeFilter) return false;
         if (hideDemoClones && c.is_demo) return false;
         return true;
