@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import App from './App';
@@ -9,8 +9,10 @@ describe('App', () => {
     expect(screen.getByText('Sona')).toBeInTheDocument();
   });
 
-  it('redirects root to /clones', () => {
+  it('redirects root to /clones', async () => {
     render(<App />);
-    expect(screen.getByRole('heading', { name: /clones/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/welcome to sona/i)).toBeInTheDocument();
+    });
   });
 });
