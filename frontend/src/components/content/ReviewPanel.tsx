@@ -3,13 +3,14 @@ import { toast } from 'sonner';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  useDetectAI,
   useFeedbackRegen,
   usePartialRegen,
   useRegenerateContent,
   useScoreContent,
   useUpdateContent,
 } from '@/hooks/use-content';
-import type { AuthenticityScoreResponse, ContentResponse } from '@/types/api';
+import type { AuthenticityScoreResponse, ContentResponse, DetectionResponse } from '@/types/api';
 import { type PlatformKey, PLATFORMS } from '@/types/platforms';
 
 import { PlatformTab } from './PlatformTab';
@@ -34,10 +35,12 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
   });
 
   const [scoreResults, setScoreResults] = useState<Record<string, AuthenticityScoreResponse>>({});
+  const [detectionResults, setDetectionResults] = useState<Record<string, DetectionResponse>>({});
 
   const updateMutation = useUpdateContent();
   const regenerateMutation = useRegenerateContent();
   const scoreMutation = useScoreContent();
+  const detectMutation = useDetectAI();
   const feedbackRegenMutation = useFeedbackRegen();
   const partialRegenMutation = usePartialRegen();
 
@@ -64,6 +67,14 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
     scoreMutation.mutate(item.id, {
       onSuccess: (data) => {
         setScoreResults((prev) => ({ ...prev, [item.id]: data }));
+      },
+    });
+  }
+
+  function handleCheckDetection(item: ContentResponse) {
+    detectMutation.mutate(item.id, {
+      onSuccess: (data) => {
+        setDetectionResults((prev) => ({ ...prev, [item.id]: data }));
       },
     });
   }
@@ -138,10 +149,13 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
             onSave={() => handleSave(item)}
             onRegenerate={() => handleRegenerate(item)}
             onCheckScore={() => handleCheckScore(item)}
+            onCheckDetection={() => handleCheckDetection(item)}
             isSaving={updateMutation.isPending}
             isRegenerating={regenerateMutation.isPending}
             isScoring={scoreMutation.isPending}
+            isDetecting={detectMutation.isPending}
             scoreResult={scoreResults[item.id] ?? null}
+            detectionResult={detectionResults[item.id] ?? null}
             onFeedbackRegen={(feedback) => handleFeedbackRegen(item, feedback)}
             isFeedbackRegenerating={feedbackRegenMutation.isPending}
             onPartialRegen={(start, end) => handlePartialRegen(item, start, end)}

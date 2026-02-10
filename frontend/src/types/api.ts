@@ -210,3 +210,22 @@ export const AuthenticityScoreResponseSchema = z.object({
 });
 
 export type AuthenticityScoreResponse = z.infer<typeof AuthenticityScoreResponseSchema>;
+
+// ── Detection ─────────────────────────────────────────────────────
+
+export const FlaggedPassageSchema = z.object({
+  text: z.string(),
+  reason: z.string(),
+  suggestion: z.string(),
+});
+
+export type FlaggedPassage = z.infer<typeof FlaggedPassageSchema>;
+
+export const DetectionResponseSchema = z.object({
+  risk_level: z.string(),
+  confidence: z.number().int(),
+  flagged_passages: z.array(FlaggedPassageSchema),
+  summary: z.string(),
+});
+
+export type DetectionResponse = z.infer<typeof DetectionResponseSchema>;

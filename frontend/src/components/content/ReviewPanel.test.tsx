@@ -109,6 +109,40 @@ describe('ReviewPanel', () => {
     });
   });
 
+  it('Check AI Detection triggers detection and shows result', async () => {
+    let capturedUrl = '';
+    server.use(
+      http.post('/api/content/:id/detect', ({ request }) => {
+        capturedUrl = new URL(request.url).pathname;
+        return HttpResponse.json({
+          risk_level: 'high',
+          confidence: 88,
+          flagged_passages: [
+            {
+              text: 'In conclusion',
+              reason: 'Cliché closer',
+              suggestion: 'End naturally',
+            },
+          ],
+          summary: 'High AI likelihood.',
+        });
+      })
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ReviewPanel items={items} generationParams={generationParams} />);
+
+    await user.click(screen.getByRole('button', { name: /check ai detection/i }));
+
+    await waitFor(() => {
+      expect(capturedUrl).toBe('/api/content/c-1/detect');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('High AI likelihood.')).toBeInTheDocument();
+    });
+  });
+
   it('edited content preserved when switching tabs', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ReviewPanel items={items} generationParams={generationParams} />);

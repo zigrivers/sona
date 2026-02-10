@@ -13,12 +13,20 @@ const defaultProps = {
   onSave: vi.fn(),
   onRegenerate: vi.fn(),
   onCheckScore: vi.fn(),
+  onCheckDetection: vi.fn(),
   isSaving: false,
   isRegenerating: false,
   isScoring: false,
+  isDetecting: false,
   scoreResult: null as null | {
     overall_score: number;
     dimensions: { name: string; score: number; feedback: string }[];
+  },
+  detectionResult: null as null | {
+    risk_level: string;
+    confidence: number;
+    flagged_passages: { text: string; reason: string; suggestion: string }[];
+    summary: string;
   },
 };
 
@@ -148,5 +156,47 @@ describe('PlatformTab', () => {
   it('shows export menu button', () => {
     render(<PlatformTab {...defaultProps} />);
     expect(screen.getByRole('button', { name: /export/i })).toBeInTheDocument();
+  });
+
+  it('shows Check AI Detection button', () => {
+    render(<PlatformTab {...defaultProps} />);
+    expect(screen.getByRole('button', { name: /check ai detection/i })).toBeInTheDocument();
+  });
+
+  it('calls onCheckDetection when Check AI Detection clicked', async () => {
+    const onCheckDetection = vi.fn();
+    const user = userEvent.setup();
+    render(<PlatformTab {...defaultProps} onCheckDetection={onCheckDetection} />);
+    await user.click(screen.getByRole('button', { name: /check ai detection/i }));
+    expect(onCheckDetection).toHaveBeenCalledOnce();
+  });
+
+  it('shows detection result when available', () => {
+    render(
+      <PlatformTab
+        {...defaultProps}
+        detectionResult={{
+          risk_level: 'medium',
+          confidence: 72,
+          flagged_passages: [
+            {
+              text: 'Furthermore',
+              reason: 'Generic transition',
+              suggestion: 'Use natural bridge',
+            },
+          ],
+          summary: 'Some AI patterns detected.',
+        }}
+      />
+    );
+    expect(screen.getByText(/medium/i)).toBeInTheDocument();
+    expect(screen.getByText(/72/)).toBeInTheDocument();
+    expect(screen.getByText('Furthermore')).toBeInTheDocument();
+  });
+
+  it('shows loading state when detecting', () => {
+    render(<PlatformTab {...defaultProps} isDetecting={true} />);
+    const button = screen.getByRole('button', { name: /check ai detection/i });
+    expect(button).toBeDisabled();
   });
 });

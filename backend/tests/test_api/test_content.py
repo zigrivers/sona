@@ -764,3 +764,52 @@ class TestPartialRegenEndpoint:
             },
         )
         assert response.status_code == 200
+
+
+def _make_detection_response() -> str:
+    """Build a fake LLM JSON response for AI detection."""
+    return json.dumps(
+        {
+            "risk_level": "medium",
+            "confidence": 72,
+            "flagged_passages": [
+                {
+                    "text": "Furthermore, it is important",
+                    "reason": "Generic AI transition",
+                    "suggestion": "Use a natural bridge",
+                },
+            ],
+            "summary": "Some AI-like patterns detected.",
+        }
+    )
+
+
+class TestDetectEndpoint:
+    async def test_detect_returns_200(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """POST /api/content/{id}/detect should return 200 with detection results."""
+        item = await _generate_one(client, session, mock_provider)
+
+        mock_provider.complete = AsyncMock(return_value=_make_detection_response())
+
+        response = await client.post(f"/api/content/{item['id']}/detect")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["risk_level"] == "medium"
+        assert data["confidence"] == 72
+        assert len(data["flagged_passages"]) == 1
+        assert "summary" in data
+        passage = data["flagged_passages"][0]
+        assert "text" in passage
+        assert "reason" in passage
+        assert "suggestion" in passage
+
+    async def test_detect_content_not_found_404(self, client: AsyncClient) -> None:
+        """POST /api/content/{id}/detect for non-existent content should return 404."""
+        response = await client.post("/api/content/nonexistent-id/detect")
+        assert response.status_code == 404

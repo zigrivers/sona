@@ -1,6 +1,7 @@
 """Tests for LLM prompt template functions."""
 
 from app.llm.prompts import (
+    build_detection_prompt,
     build_dna_analysis_prompt,
     build_feedback_regen_prompt,
     build_generation_prompt,
@@ -150,3 +151,27 @@ class TestBuildPartialRegenPrompt:
         assert len(result) >= 2
         full_text = " ".join(msg["content"] for msg in result)
         assert "Middle." in full_text
+
+
+def test_build_detection_prompt_includes_content() -> None:
+    """The detection prompt should include the content text."""
+    result = build_detection_prompt("This is my blog post about testing.")
+
+    assert isinstance(result, list)
+    assert len(result) >= 2
+
+    for msg in result:
+        assert "role" in msg
+        assert "content" in msg
+
+    full_text = " ".join(msg["content"] for msg in result)
+    assert "This is my blog post about testing." in full_text
+
+
+def test_build_detection_prompt_asks_for_json() -> None:
+    """The detection prompt should request JSON response format."""
+    result = build_detection_prompt("Some content.")
+
+    full_text = " ".join(msg["content"] for msg in result)
+    assert "risk_level" in full_text
+    assert "flagged_passages" in full_text

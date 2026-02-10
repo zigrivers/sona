@@ -1,4 +1,4 @@
-import { Loader2, RefreshCw, Save, Shield, Sparkles } from 'lucide-react';
+import { Loader2, RefreshCw, Save, ScanEye, Shield, Sparkles } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -14,9 +14,10 @@ import {
   splitIntoThread,
 } from '@/lib/platforms';
 import { cn } from '@/lib/utils';
-import type { AuthenticityScoreResponse, ContentResponse } from '@/types/api';
+import type { AuthenticityScoreResponse, ContentResponse, DetectionResponse } from '@/types/api';
 import { type PlatformKey, PLATFORMS } from '@/types/platforms';
 
+import { AiDetectionPreview } from './AiDetectionPreview';
 import { AuthenticityScore } from './AuthenticityScore';
 import { DimensionBreakdown } from './DimensionBreakdown';
 import { ExportMenu } from './ExportMenu';
@@ -29,10 +30,13 @@ interface PlatformTabProps {
   onSave: () => void;
   onRegenerate: () => void;
   onCheckScore: () => void;
+  onCheckDetection: () => void;
   isSaving: boolean;
   isRegenerating: boolean;
   isScoring: boolean;
+  isDetecting: boolean;
   scoreResult: AuthenticityScoreResponse | null;
+  detectionResult: DetectionResponse | null;
   onFeedbackRegen?: (feedback: string) => void;
   isFeedbackRegenerating?: boolean;
   onPartialRegen?: (start: number, end: number) => void;
@@ -46,10 +50,13 @@ export function PlatformTab({
   onSave,
   onRegenerate,
   onCheckScore,
+  onCheckDetection,
   isSaving,
   isRegenerating,
   isScoring,
+  isDetecting,
   scoreResult,
+  detectionResult,
   onFeedbackRegen,
   isFeedbackRegenerating = false,
   onPartialRegen,
@@ -153,6 +160,15 @@ export function PlatformTab({
         </Card>
       )}
 
+      {/* AI Detection result */}
+      {detectionResult && (
+        <Card>
+          <CardContent className="py-3">
+            <AiDetectionPreview result={detectionResult} />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Action buttons */}
       <div className="flex gap-2">
         <Button onClick={onSave} disabled={isSaving}>
@@ -170,6 +186,14 @@ export function PlatformTab({
         <Button variant="outline" onClick={onCheckScore} disabled={isScoring}>
           {isScoring ? <Loader2 className="size-4 animate-spin" /> : <Shield className="size-4" />}
           Check Authenticity
+        </Button>
+        <Button variant="outline" onClick={onCheckDetection} disabled={isDetecting}>
+          {isDetecting ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <ScanEye className="size-4" />
+          )}
+          Check AI Detection
         </Button>
         {onPartialRegen && selectionStart !== null && selectionEnd !== null && (
           <Button
