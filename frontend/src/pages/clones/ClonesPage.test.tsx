@@ -1,7 +1,9 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
+import { useUIStore } from '@/stores/ui-store';
 import { buildClone, buildProvider } from '@/test/factories';
 import { server } from '@/test/handlers';
 import { renderWithProviders } from '@/test/render';
@@ -29,22 +31,43 @@ function mockProvidersUnconfigured() {
   );
 }
 
-function mockDemoClones() {
+const demoClone = buildClone({
+  name: 'Demo Writer',
+  type: 'demo',
+  is_demo: true,
+  updated_at: '2026-01-10T00:00:00Z',
+});
+const originalClone = buildClone({
+  name: 'Alice Smith',
+  type: 'original',
+  confidence_score: 85,
+  sample_count: 12,
+  updated_at: '2026-01-15T00:00:00Z',
+});
+const mergedClone = buildClone({
+  name: 'Bob Jones',
+  type: 'merged',
+  confidence_score: 70,
+  sample_count: 5,
+  updated_at: '2026-01-12T00:00:00Z',
+});
+
+function setupClones(clones = [originalClone, mergedClone, demoClone]) {
+  mockProvidersConfigured();
   server.use(
-    http.get('/api/clones', () => {
-      return HttpResponse.json({
-        items: [
-          buildClone({ name: 'Tech Blogger', is_demo: true }),
-          buildClone({ name: 'Podcast Host', is_demo: true }),
-          buildClone({ name: 'Newsletter Writer', is_demo: true }),
-        ],
-        total: 3,
-      });
-    })
+    http.get('/api/clones', () =>
+      HttpResponse.json({ items: clones, total: clones.length })
+    )
   );
 }
 
+afterEach(() => {
+  useUIStore.setState({ hideDemoClones: false });
+});
+
 describe('ClonesPage', () => {
+  // ── Existing tests (welcome / provider states) ──────────────
+
   it('shows welcome state when no provider configured', async () => {
     mockProvidersUnconfigured();
 
@@ -70,30 +93,6 @@ describe('ClonesPage', () => {
     });
   });
 
-  it('shows demo clones when provider is configured', async () => {
-    mockProvidersConfigured();
-    mockDemoClones();
-
-    renderWithProviders(<ClonesPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Tech Blogger')).toBeInTheDocument();
-    });
-    expect(screen.getByText('Podcast Host')).toBeInTheDocument();
-    expect(screen.getByText('Newsletter Writer')).toBeInTheDocument();
-  });
-
-  it('shows Create Your First Clone CTA when provider configured', async () => {
-    mockProvidersConfigured();
-    mockDemoClones();
-
-    renderWithProviders(<ClonesPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('link', { name: /create your first clone/i })).toBeInTheDocument();
-    });
-  });
-
   it('shows loading skeleton while data loads', () => {
     server.use(
       http.get('/api/providers', () => new Promise(() => {})),
@@ -103,5 +102,139 @@ describe('ClonesPage', () => {
     renderWithProviders(<ClonesPage />);
 
     expect(screen.getByTestId('clones-loading')).toBeInTheDocument();
+  });
+
+  // ── Clone list tests ────────────────────────────────────────
+
+  it('renders clone cards when data is loaded', async () => {
+    setupClones();
+    renderWithProviders(<ClonesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Bob Jones')).toBeInTheDocument();
+    expect(screen.getByText('Demo Writer')).toBeInTheDocument();
+  });
+
+  it('sorts clones by updated_at descending', async () => {
+    setupClones();
+    renderWithProviders(<ClonesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+    });
+
+    const links = screen.getAllByRole('link').filter((link) => link.getAttribute('href')?.startsWith('/clones/'));
+    const names = links
+      .map((link) => {
+        const match = within(link).queryByText(/Alice Smith|Bob Jones|Demo Writer/);
+        return match?.textContent;
+      })
+      .filter(Boolean);
+    expect(names).toEqual(['Alice Smith', 'Bob Jones', 'Demo Writer']);
+  });
+
+  it('filters clones by search query', async () => {
+    setupClones();
+    const user = userEvent.setup();
+    renderWithProviders(<ClonesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByPlaceholderText('Search clones...'), 'Alice');
+
+    expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+    expect(screen.queryByText('Bob Jones')).not.toBeInTheDocument();
+    expect(screen.queryByText('Demo Writer')).not.toBeInTheDocument();
+  });
+
+  it('filters clones by type', async () => {
+    setupClones();
+    const user = userEvent.setup();
+    renderWithProviders(<ClonesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('combobox'));
+    await user.click(screen.getByRole('option', { name: 'Merged' }));
+
+    expect(screen.queryByText('Alice Smith')).not.toBeInTheDocument();
+    expect(screen.getByText('Bob Jones')).toBeInTheDocument();
+    expect(screen.queryByText('Demo Writer')).not.toBeInTheDocument();
+  });
+
+  it('hides demo clones when toggle is on', async () => {
+    setupClones();
+    const user = userEvent.setup();
+    renderWithProviders(<ClonesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Demo Writer')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('switch'));
+
+    expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+    expect(screen.getByText('Bob Jones')).toBeInTheDocument();
+    expect(screen.queryByText('Demo Writer')).not.toBeInTheDocument();
+  });
+
+  it('shows empty state when no clones exist', async () => {
+    setupClones([]);
+    renderWithProviders(<ClonesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Create Your First Clone')).toBeInTheDocument();
+    });
+  });
+
+  it('shows no-matches state when filters exclude everything', async () => {
+    setupClones();
+    const user = userEvent.setup();
+    renderWithProviders(<ClonesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByPlaceholderText('Search clones...'), 'nonexistent');
+
+    expect(screen.getByText('No clones match your filters')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /clear filters/i })).toBeInTheDocument();
+  });
+
+  it('clears filters when Clear Filters button is clicked', async () => {
+    setupClones();
+    const user = userEvent.setup();
+    renderWithProviders(<ClonesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByPlaceholderText('Search clones...'), 'nonexistent');
+    expect(screen.getByText('No clones match your filters')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /clear filters/i }));
+
+    expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+    expect(screen.getByText('Bob Jones')).toBeInTheDocument();
+  });
+
+  it('links cards to clone detail pages', async () => {
+    setupClones([originalClone]);
+    renderWithProviders(<ClonesPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+    });
+
+    const cardLink = screen.getByText('Alice Smith').closest('a');
+    expect(cardLink).toHaveAttribute('href', `/clones/${originalClone.id}`);
   });
 });
