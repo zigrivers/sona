@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { buildDna } from '@/test/factories';
 import { server } from '@/test/handlers';
 
-import { useAnalyzeDna, useDna, useUpdateDna } from './use-dna';
+import { useAnalyzeDna, useDna, useDnaVersions, useRevertDna, useUpdateDna } from './use-dna';
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -68,5 +68,37 @@ describe('useAnalyzeDna', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.trigger).toBe('initial_analysis');
+  });
+});
+
+describe('useDnaVersions', () => {
+  it('fetches version list', async () => {
+    const versions = [
+      buildDna({ version_number: 2, trigger: 'manual_edit' }),
+      buildDna({ version_number: 1, trigger: 'initial_analysis' }),
+    ];
+    server.use(
+      http.get('/api/clones/:cloneId/dna/versions', () => HttpResponse.json({ items: versions }))
+    );
+
+    const { result } = renderHook(() => useDnaVersions('clone-1'), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.items).toHaveLength(2);
+    expect(result.current.data?.items[0].version_number).toBe(2);
+  });
+});
+
+describe('useRevertDna', () => {
+  it('sends POST and returns reverted DNA', async () => {
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => useRevertDna('clone-1'), { wrapper });
+
+    result.current.mutate(1);
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.trigger).toBe('revert');
   });
 });

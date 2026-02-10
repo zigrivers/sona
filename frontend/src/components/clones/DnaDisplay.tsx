@@ -10,6 +10,7 @@ import { useAnalyzeDna, useDna, useUpdateDna } from '@/hooks/use-dna';
 
 import { DNA_CATEGORIES } from './dna-categories';
 import { DnaCategorySection } from './DnaCategorySection';
+import { DnaVersionHistory } from './DnaVersionHistory';
 
 interface DnaDisplayProps {
   cloneId: string;
@@ -98,6 +99,11 @@ export function DnaDisplay({ cloneId }: DnaDisplayProps) {
           />
         ))}
       </Accordion>
+
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium">Version History</h3>
+        <DnaVersionHistory cloneId={cloneId} />
+      </div>
     </div>
   );
 }
