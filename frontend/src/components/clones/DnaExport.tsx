@@ -16,9 +16,7 @@ export function DnaExport({ cloneId }: DnaExportProps) {
   async function handleExport() {
     setIsLoading(true);
     try {
-      const { prompt } = await api.get<{ prompt: string }>(
-        `/api/clones/${cloneId}/dna/prompt`
-      );
+      const { prompt } = await api.get<{ prompt: string }>(`/api/clones/${cloneId}/dna/prompt`);
       await copyToClipboard(prompt);
       toast.success('Copied to clipboard');
     } catch {

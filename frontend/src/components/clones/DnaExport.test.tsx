@@ -26,9 +26,7 @@ beforeEach(() => {
   vi.mocked(toast.success).mockClear();
 
   server.use(
-    http.get('/api/clones/:cloneId/dna/prompt', () =>
-      HttpResponse.json({ prompt: MOCK_PROMPT })
-    )
+    http.get('/api/clones/:cloneId/dna/prompt', () => HttpResponse.json({ prompt: MOCK_PROMPT }))
   );
 });
 

@@ -197,7 +197,7 @@ async def get_dna_prompt(clone_id: str, session: Session) -> DNAPromptResponse:
     dna = await svc.get_current(clone_id)
     if dna is None:
         raise HTTPException(status_code=404, detail="No DNA found for this clone")
-    prompt = DNAService.export_as_prompt(cast(dict[str, Any], dna.data))
+    prompt = DNAService.export_as_prompt(cast(dict[str, Any], dna.data))  # pyright: ignore[reportUnknownMemberType]
     return DNAPromptResponse(prompt=prompt)
 
 

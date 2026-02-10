@@ -267,15 +267,16 @@ class DNAService:
             cat_data = data.get(cat_key)
             if not cat_data or not isinstance(cat_data, dict):
                 continue
+            cat_fields = cast(dict[str, Any], cat_data)
             parts: list[str] = []
             for field_key, template in field_templates.items():
-                value = cat_data.get(field_key)
+                value: Any = cat_fields.get(field_key)
                 if value is None:
                     continue
                 if isinstance(value, list):
                     if not value:
                         continue
-                    formatted = ", ".join(f'"{item}"' for item in value)
+                    formatted = ", ".join(f'"{item}"' for item in cast(list[str], value))
                 else:
                     formatted = str(value)
                 parts.append(template.format(v=formatted))
