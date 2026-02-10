@@ -8,6 +8,20 @@ export function useKeyboardShortcuts() {
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
+      // ? key — open shortcut help (skip if in text input)
+      if (event.key === '?') {
+        const tag = (event.target as HTMLElement)?.tagName;
+        if (
+          tag === 'INPUT' ||
+          tag === 'TEXTAREA' ||
+          (event.target as HTMLElement)?.isContentEditable
+        ) {
+          return;
+        }
+        useUIStore.getState().setShortcutHelpOpen(true);
+        return;
+      }
+
       const mod = event.metaKey || event.ctrlKey;
       if (!mod) return;
 

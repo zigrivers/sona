@@ -12,7 +12,7 @@ vi.mock('react-router-dom', () => ({
 
 describe('useKeyboardShortcuts', () => {
   beforeEach(() => {
-    useUIStore.setState({ commandPaletteOpen: false });
+    useUIStore.setState({ commandPaletteOpen: false, shortcutHelpOpen: false });
     mockNavigate.mockClear();
   });
 
@@ -44,6 +44,34 @@ describe('useKeyboardShortcuts', () => {
     document.dispatchEvent(event);
 
     expect(mockNavigate).toHaveBeenCalledWith('/clones/new');
+  });
+
+  it('opens shortcut help on ? key', () => {
+    renderHook(() => useKeyboardShortcuts());
+
+    const event = new KeyboardEvent('keydown', {
+      key: '?',
+      bubbles: true,
+    });
+    document.dispatchEvent(event);
+
+    expect(useUIStore.getState().shortcutHelpOpen).toBe(true);
+  });
+
+  it('does not open shortcut help when target is an input', () => {
+    renderHook(() => useKeyboardShortcuts());
+
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+
+    const event = new KeyboardEvent('keydown', {
+      key: '?',
+      bubbles: true,
+    });
+    input.dispatchEvent(event);
+
+    expect(useUIStore.getState().shortcutHelpOpen).toBe(false);
+    document.body.removeChild(input);
   });
 
   it('cleans up listener on unmount', () => {
