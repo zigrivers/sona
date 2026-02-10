@@ -5,7 +5,12 @@ import { useUIStore } from './ui-store';
 describe('useUIStore', () => {
   beforeEach(() => {
     // Reset store state before each test
-    useUIStore.setState({ theme: 'system', sidebarCollapsed: false, hideDemoClones: false });
+    useUIStore.setState({
+      theme: 'system',
+      sidebarCollapsed: false,
+      hideDemoClones: false,
+      showInputPanel: false,
+    });
     document.documentElement.classList.remove('dark');
     localStorage.clear();
   });
@@ -49,5 +54,17 @@ describe('useUIStore', () => {
 
     useUIStore.getState().toggleSidebar();
     expect(useUIStore.getState().sidebarCollapsed).toBe(false);
+  });
+
+  it('defaults showInputPanel to false', () => {
+    expect(useUIStore.getState().showInputPanel).toBe(false);
+  });
+
+  it('sets showInputPanel via setShowInputPanel', () => {
+    useUIStore.getState().setShowInputPanel(true);
+    expect(useUIStore.getState().showInputPanel).toBe(true);
+
+    useUIStore.getState().setShowInputPanel(false);
+    expect(useUIStore.getState().showInputPanel).toBe(false);
   });
 });
