@@ -47,6 +47,7 @@ describe('Sidebar', () => {
 
     expect(screen.getByRole('link', { name: /providers/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /methodology/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /data & privacy/i })).toBeInTheDocument();
   });
 
   it('should highlight active settings sub-link', () => {

@@ -7,6 +7,7 @@ import { ClonesPage } from '@/pages/clones/ClonesPage';
 import { CreatePage } from '@/pages/create/CreatePage';
 import { DesignSystemPage } from '@/pages/DesignSystemPage';
 import { LibraryPage } from '@/pages/library/LibraryPage';
+import { DataPage } from '@/pages/settings/DataPage';
 import { MethodologyPage } from '@/pages/settings/MethodologyPage';
 import { PresetsPage } from '@/pages/settings/PresetsPage';
 import { ProvidersPage } from '@/pages/settings/ProvidersPage';
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="/settings/providers" element={<ProvidersPage />} />
             <Route path="/settings/methodology" element={<MethodologyPage />} />
             <Route path="/settings/presets" element={<PresetsPage />} />
+            <Route path="/settings/data" element={<DataPage />} />
           </Route>
           {/* Dev tools — outside main layout */}
           <Route path="/design-system" element={<DesignSystemPage />} />

@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.api.clones import router as clones_router
 from app.api.content import router as content_router
+from app.api.data import router as data_router
 from app.api.methodology import router as methodology_router
 from app.api.providers import router as providers_router
 from app.api.samples import router as samples_router
@@ -11,6 +12,7 @@ from app.api.samples import router as samples_router
 api_router = APIRouter(prefix="/api")
 api_router.include_router(clones_router)
 api_router.include_router(content_router)
+api_router.include_router(data_router)
 api_router.include_router(methodology_router)
 api_router.include_router(providers_router)
 api_router.include_router(samples_router)
