@@ -1,8 +1,15 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
+import { AppLayout } from '@/components/layout/AppLayout';
 import { Toaster } from '@/components/ui/sonner';
+import { ClonesPage } from '@/pages/clones/ClonesPage';
+import { CreatePage } from '@/pages/create/CreatePage';
 import { DesignSystemPage } from '@/pages/DesignSystemPage';
+import { LibraryPage } from '@/pages/library/LibraryPage';
+import { MethodologyPage } from '@/pages/settings/MethodologyPage';
+import { PresetsPage } from '@/pages/settings/PresetsPage';
+import { ProvidersPage } from '@/pages/settings/ProvidersPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -13,21 +20,30 @@ const queryClient = new QueryClient({
   },
 });
 
-function HomePage() {
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <h1 className="text-4xl font-bold">Sona</h1>
-    </div>
-  );
-}
-
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          {/* Dev tools */}
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<Navigate to="/clones" replace />} />
+            {/* Clones */}
+            <Route path="/clones" element={<ClonesPage />} />
+            <Route path="/clones/new" element={<ClonesPage />} />
+            <Route path="/clones/:id" element={<ClonesPage />} />
+            <Route path="/clones/compare" element={<ClonesPage />} />
+            <Route path="/clones/merge" element={<ClonesPage />} />
+            {/* Content Generator */}
+            <Route path="/create" element={<CreatePage />} />
+            <Route path="/create/:id" element={<CreatePage />} />
+            {/* Content Library */}
+            <Route path="/library" element={<LibraryPage />} />
+            {/* Settings */}
+            <Route path="/settings/providers" element={<ProvidersPage />} />
+            <Route path="/settings/methodology" element={<MethodologyPage />} />
+            <Route path="/settings/presets" element={<PresetsPage />} />
+          </Route>
+          {/* Dev tools — outside main layout */}
           <Route path="/design-system" element={<DesignSystemPage />} />
         </Routes>
         <Toaster />

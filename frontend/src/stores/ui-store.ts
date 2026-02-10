@@ -5,7 +5,9 @@ export type Theme = 'light' | 'dark' | 'system';
 
 interface UIState {
   theme: Theme;
+  sidebarCollapsed: boolean;
   setTheme: (theme: Theme) => void;
+  toggleSidebar: () => void;
 }
 
 function applyTheme(theme: Theme) {
@@ -20,10 +22,12 @@ export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
       theme: 'system',
+      sidebarCollapsed: false,
       setTheme: (theme) => {
         applyTheme(theme);
         set({ theme });
       },
+      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
     }),
     {
       name: 'sona-ui',

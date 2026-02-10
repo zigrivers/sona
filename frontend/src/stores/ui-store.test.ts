@@ -5,7 +5,7 @@ import { useUIStore } from './ui-store';
 describe('useUIStore', () => {
   beforeEach(() => {
     // Reset store state before each test
-    useUIStore.setState({ theme: 'system' });
+    useUIStore.setState({ theme: 'system', sidebarCollapsed: false });
     document.documentElement.classList.remove('dark');
     localStorage.clear();
   });
@@ -37,5 +37,17 @@ describe('useUIStore', () => {
 
     useUIStore.getState().setTheme('light');
     expect(document.documentElement.classList.contains('dark')).toBe(false);
+  });
+
+  it('defaults sidebar to expanded', () => {
+    expect(useUIStore.getState().sidebarCollapsed).toBe(false);
+  });
+
+  it('toggles sidebar collapsed state', () => {
+    useUIStore.getState().toggleSidebar();
+    expect(useUIStore.getState().sidebarCollapsed).toBe(true);
+
+    useUIStore.getState().toggleSidebar();
+    expect(useUIStore.getState().sidebarCollapsed).toBe(false);
   });
 });
