@@ -18,7 +18,12 @@ from app.llm.prompts import build_generation_prompt
 from app.models.clone import VoiceClone
 from app.models.dna import VoiceDNAVersion
 from app.models.methodology import MethodologySettings
-from app.schemas.content import ContentResponse
+from app.schemas.content import (
+    ContentResponse,
+    ContentUpdate,
+    ContentVersionListResponse,
+    ContentVersionResponse,
+)
 from app.services.content_service import ContentService
 
 router = APIRouter(prefix="/content", tags=["content"])
@@ -136,3 +141,75 @@ async def stream_generate_content(
         event_generator(),
         media_type="text/event-stream",
     )
+
+
+@router.get("/{content_id}", response_model=ContentResponse)
+async def get_content(
+    content_id: str,
+    session: SessionDep,
+    provider: ProviderDep,
+) -> ContentResponse:
+    """Get a single content item by ID."""
+    service = ContentService(session, provider)
+    content = await service.get_by_id(content_id)
+    return ContentResponse.model_validate(content)
+
+
+@router.put("/{content_id}", response_model=ContentResponse)
+async def update_content(
+    content_id: str,
+    body: ContentUpdate,
+    session: SessionDep,
+    provider: ProviderDep,
+) -> ContentResponse:
+    """Update a content item (text, status, metadata)."""
+    service = ContentService(session, provider)
+    content = await service.update(content_id, body)
+    await session.commit()
+    return ContentResponse.model_validate(content)
+
+
+@router.delete("/{content_id}", status_code=204)
+async def delete_content(
+    content_id: str,
+    session: SessionDep,
+    provider: ProviderDep,
+) -> None:
+    """Delete a content item and its versions."""
+    service = ContentService(session, provider)
+    await service.delete(content_id)
+    await session.commit()
+
+
+@router.get("/{content_id}/versions", response_model=ContentVersionListResponse)
+async def list_content_versions(
+    content_id: str,
+    session: SessionDep,
+    provider: ProviderDep,
+) -> ContentVersionListResponse:
+    """List all versions of a content item, newest first."""
+    service = ContentService(session, provider)
+    versions = await service.list_versions(content_id)
+    return ContentVersionListResponse(
+        items=[ContentVersionResponse.model_validate(v) for v in versions],
+    )
+
+
+@router.post("/{content_id}/restore/{version}", response_model=ContentResponse)
+async def restore_content_version(
+    content_id: str,
+    version: int,
+    session: SessionDep,
+    provider: ProviderDep,
+) -> ContentResponse | JSONResponse:
+    """Restore content to a previous version."""
+    service = ContentService(session, provider)
+    try:
+        content = await service.restore_version(content_id, version)
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": str(exc), "code": "VERSION_NOT_FOUND"},
+        )
+    await session.commit()
+    return ContentResponse.model_validate(content)

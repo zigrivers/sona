@@ -78,6 +78,14 @@ class LLMQuotaError(SonaError):
         super().__init__(detail=msg, code=code)
 
 
+class ContentNotFoundError(SonaError):
+    def __init__(self, content_id: str) -> None:
+        super().__init__(
+            detail=f"Content '{content_id}' not found",
+            code="CONTENT_NOT_FOUND",
+        )
+
+
 class DemoCloneReadonlyError(SonaError):
     def __init__(self, clone_id: str) -> None:
         super().__init__(

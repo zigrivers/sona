@@ -8,13 +8,14 @@ from typing import Any, cast
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.exceptions import CloneNotFoundError
+from app.exceptions import CloneNotFoundError, ContentNotFoundError
 from app.llm.base import LLMProvider
 from app.llm.prompts import build_generation_prompt
 from app.models.clone import VoiceClone
-from app.models.content import Content
+from app.models.content import Content, ContentVersion
 from app.models.dna import VoiceDNAVersion
 from app.models.methodology import MethodologySettings
+from app.schemas.content import ContentUpdate
 
 
 class ContentService:
@@ -137,6 +138,108 @@ class ContentService:
             )
             self._session.add(content)
             await self._session.flush()
+            await self._create_version(content, trigger="generation")
             results.append(content)
 
         return results
+
+    # ── CRUD ──────────────────────────────────────────────────────
+
+    async def get_by_id(self, content_id: str) -> Content:
+        """Get a content item by ID, or raise ContentNotFoundError."""
+        result = await self._session.execute(select(Content).where(Content.id == content_id))
+        content = result.scalar_one_or_none()
+        if content is None:
+            raise ContentNotFoundError(content_id)
+        return content
+
+    async def update(self, content_id: str, data: ContentUpdate) -> Content:
+        """Update a content item. Creates a version if content_current changes."""
+        content = await self.get_by_id(content_id)
+
+        if data.content_current is not None:
+            content.content_current = data.content_current
+            content.word_count = len(data.content_current.split())
+            content.char_count = len(data.content_current)
+            await self._create_version(content, trigger="inline_edit")
+
+        if data.status is not None:
+            content.status = data.status
+
+        if data.topic is not None:
+            content.topic = data.topic
+
+        if data.campaign is not None:
+            content.campaign = data.campaign
+
+        if data.tags is not None:
+            content.tags = data.tags
+
+        await self._session.flush()
+        return content
+
+    async def delete(self, content_id: str) -> None:
+        """Delete a content item (cascade deletes versions)."""
+        content = await self.get_by_id(content_id)
+        await self._session.delete(content)
+        await self._session.flush()
+
+    # ── Versioning ────────────────────────────────────────────────
+
+    async def list_versions(self, content_id: str) -> list[ContentVersion]:
+        """Return all versions for a content item, newest first."""
+        stmt = (
+            select(ContentVersion)
+            .where(ContentVersion.content_id == content_id)
+            .order_by(ContentVersion.version_number.desc())
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def restore_version(self, content_id: str, version_number: int) -> Content:
+        """Restore content to a previous version (non-destructive, creates new version)."""
+        content = await self.get_by_id(content_id)
+
+        stmt = select(ContentVersion).where(
+            ContentVersion.content_id == content_id,
+            ContentVersion.version_number == version_number,
+        )
+        result = await self._session.execute(stmt)
+        old_version = result.scalar_one_or_none()
+        if old_version is None:
+            msg = f"Version {version_number} not found for content '{content_id}'"
+            raise ValueError(msg)
+
+        content.content_current = old_version.content_text
+        content.word_count = old_version.word_count
+        content.char_count = len(old_version.content_text)
+        await self._create_version(content, trigger="restore")
+        await self._session.flush()
+        return content
+
+    # ── Helpers ────────────────────────────────────────────────────
+
+    async def _next_version_number(self, content_id: str) -> int:
+        """Return the next version number for a content item."""
+        stmt = (
+            select(ContentVersion.version_number)
+            .where(ContentVersion.content_id == content_id)
+            .order_by(ContentVersion.version_number.desc())
+            .limit(1)
+        )
+        result = await self._session.execute(stmt)
+        current = result.scalar_one_or_none()
+        return (current or 0) + 1
+
+    async def _create_version(self, content: Content, trigger: str) -> ContentVersion:
+        """Create a new ContentVersion snapshot."""
+        version = ContentVersion(
+            content_id=content.id,
+            version_number=await self._next_version_number(content.id),
+            content_text=content.content_current,
+            trigger=trigger,
+            word_count=content.word_count,
+        )
+        self._session.add(version)
+        await self._session.flush()
+        return version
