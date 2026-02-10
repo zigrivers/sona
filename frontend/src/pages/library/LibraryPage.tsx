@@ -27,6 +27,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useClones } from '@/hooks/use-clones';
 import { useContentList } from '@/hooks/use-content';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 
 import { columns, type ContentRow, selectColumn } from './columns';
 
@@ -136,6 +137,20 @@ export function LibraryPage() {
 
   const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
 
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useKeyboardShortcut(
+    'f',
+    { meta: true },
+    useCallback(() => searchRef.current?.focus(), [])
+  );
+
+  useKeyboardShortcut(
+    'a',
+    { meta: true },
+    useCallback(() => table.toggleAllPageRowsSelected(true), [table])
+  );
+
   const handleBulkComplete = useCallback(() => {
     setRowSelection({});
   }, []);
@@ -218,7 +233,7 @@ export function LibraryPage() {
         </TabsList>
       </Tabs>
 
-      <LibraryFilters filters={filters} onFiltersChange={handleFiltersChange} />
+      <LibraryFilters ref={searchRef} filters={filters} onFiltersChange={handleFiltersChange} />
 
       {rows.length === 0 && hasActiveFilters ? (
         <EmptyState

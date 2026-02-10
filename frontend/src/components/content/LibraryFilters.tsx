@@ -1,5 +1,5 @@
 import { Search, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -27,7 +27,8 @@ interface LibraryFiltersProps {
 
 const DEBOUNCE_MS = 300;
 
-export function LibraryFilters({ filters, onFiltersChange }: LibraryFiltersProps) {
+export const LibraryFilters = forwardRef<HTMLInputElement, LibraryFiltersProps>(
+  function LibraryFilters({ filters, onFiltersChange }, ref) {
   const { data: cloneData } = useClones();
   const [searchInput, setSearchInput] = useState(filters.search ?? '');
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -102,6 +103,7 @@ export function LibraryFilters({ filters, onFiltersChange }: LibraryFiltersProps
       <div className="relative">
         <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
         <Input
+          ref={ref}
           placeholder="Search content…"
           value={searchInput}
           onChange={(e) => handleSearchChange(e.target.value)}
@@ -118,4 +120,4 @@ export function LibraryFilters({ filters, onFiltersChange }: LibraryFiltersProps
       )}
     </div>
   );
-}
+});

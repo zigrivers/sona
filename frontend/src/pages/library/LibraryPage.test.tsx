@@ -316,4 +316,48 @@ describe('LibraryPage', () => {
     });
     expect(screen.getByRole('button', { name: /clear filters/i })).toBeInTheDocument();
   });
+
+  it('Cmd+F focuses search input', async () => {
+    mockContentAndClones();
+    renderWithProviders(<LibraryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Short content for LinkedIn.')).toBeInTheDocument();
+    });
+
+    const searchInput = screen.getByLabelText(/search content/i);
+    expect(document.activeElement).not.toBe(searchInput);
+
+    // Fire Cmd+F
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'f', metaKey: true, bubbles: true })
+    );
+
+    expect(document.activeElement).toBe(searchInput);
+  });
+
+  it('Cmd+A selects all visible items', async () => {
+    mockContentAndClones();
+    renderWithProviders(<LibraryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Short content for LinkedIn.')).toBeInTheDocument();
+    });
+
+    // No rows selected initially
+    const checkboxes = screen.getAllByRole('checkbox', { name: /select row/i });
+    expect(checkboxes[0]).not.toBeChecked();
+
+    // Fire Cmd+A
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'a', metaKey: true, bubbles: true })
+    );
+
+    // All rows should be selected
+    await waitFor(() => {
+      const updatedCheckboxes = screen.getAllByRole('checkbox', { name: /select row/i });
+      expect(updatedCheckboxes[0]).toBeChecked();
+      expect(updatedCheckboxes[1]).toBeChecked();
+    });
+  });
 });
