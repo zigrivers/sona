@@ -23,6 +23,33 @@ function mockClones() {
   );
 }
 
+async function setupReadyToGenerate() {
+  // Reset store to avoid state leaking from previous tests
+  const { useGeneratorStore } = await import('@/stores/generator-store');
+  useGeneratorStore.setState({ lastUsedCloneId: null, lastUsedProperties: null });
+
+  mockClones();
+  const user = userEvent.setup();
+  renderWithProviders(<CreatePage />);
+
+  // Select clone
+  const trigger = await screen.findByRole('button', { name: /select a voice/i });
+  await user.click(trigger);
+  await waitFor(() => {
+    expect(screen.getByText('Marketing Voice')).toBeInTheDocument();
+  });
+  await user.click(screen.getByText('Marketing Voice'));
+
+  // Type input
+  const textarea = screen.getByPlaceholderText(/describe the content/i);
+  await user.type(textarea, 'Write a post');
+
+  // Select platform
+  await user.click(screen.getByRole('checkbox', { name: /linkedin/i }));
+
+  return user;
+}
+
 describe('CreatePage', () => {
   it('renders voice selector and input', async () => {
     mockClones();
@@ -258,5 +285,47 @@ describe('CreatePage', () => {
     await waitFor(() => {
       expect(screen.getByText('Marketing Voice')).toBeInTheDocument();
     });
+  });
+
+  it('Cmd+Enter triggers generate', async () => {
+    await setupReadyToGenerate();
+
+    // Fire Cmd+Enter
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true })
+    );
+
+    // Should show generating state
+    await waitFor(() => {
+      expect(screen.getByText(/generating content/i)).toBeInTheDocument();
+    });
+  });
+
+  it('Cmd+Shift+Enter triggers generate', async () => {
+    await setupReadyToGenerate();
+
+    // Fire Cmd+Shift+Enter
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Enter',
+        metaKey: true,
+        shiftKey: true,
+        bubbles: true,
+      })
+    );
+
+    // Should show generating state
+    await waitFor(() => {
+      expect(screen.getByText(/generating content/i)).toBeInTheDocument();
+    });
+  });
+
+  it('generate button tooltip shows shortcut hint', async () => {
+    mockClones();
+    renderWithProviders(<CreatePage />);
+
+    expect(screen.getByText(/generate/i)).toBeInTheDocument();
+    // Tooltip content with shortcut hint is present in DOM
+    expect(screen.getByText(/⌘↵/)).toBeInTheDocument();
   });
 });

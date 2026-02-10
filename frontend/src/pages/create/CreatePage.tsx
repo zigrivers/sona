@@ -9,6 +9,7 @@ import { VoiceSelector } from '@/components/content/VoiceSelector';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useGenerateContent } from '@/hooks/use-content';
+import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import {
   DEFAULT_PROPERTIES,
   type GenerationProperties,
@@ -67,6 +68,9 @@ export function CreatePage() {
       }
     );
   }
+
+  useKeyboardShortcut('Enter', { meta: true }, handleGenerate);
+  useKeyboardShortcut('Enter', { meta: true, shift: true }, handleGenerate);
 
   function handleNewGeneration() {
     setGeneratedItems(null);
@@ -139,6 +143,7 @@ export function CreatePage() {
                     >
                       <Sparkles className="size-4" />
                       Generate
+                      <kbd className="ml-1.5 text-xs opacity-60">⌘↵</kbd>
                     </Button>
                   </span>
                 </TooltipTrigger>
