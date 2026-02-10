@@ -1,6 +1,7 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+import { ConfidenceBadge } from '@/components/clones/ConfidenceBadge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -82,7 +83,7 @@ export function CloneHeader({ clone, onUpdate, onDelete }: CloneHeaderProps) {
             </button>
           )}
           <Badge variant="secondary">{clone.type}</Badge>
-          <Badge variant="outline">{clone.confidence_score}% confidence</Badge>
+          <ConfidenceBadge score={clone.confidence_score} />
         </div>
 
         <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>

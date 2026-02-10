@@ -54,7 +54,7 @@ describe('CloneDetailPage', () => {
       expect(screen.getByText('Detail Clone')).toBeInTheDocument();
     });
     expect(screen.getByText('original')).toBeInTheDocument();
-    expect(screen.getByText('80% confidence')).toBeInTheDocument();
+    expect(screen.getByText('80% — Ready for use')).toBeInTheDocument();
   });
 
   it('renders three tabs', async () => {
