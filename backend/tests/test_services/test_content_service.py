@@ -16,6 +16,35 @@ from app.schemas.content import ContentUpdate
 from app.services.content_service import ContentService
 
 
+async def _create_content_item(
+    session: AsyncSession,
+    clone_id: str,
+    *,
+    platform: str = "blog",
+    status: str = "draft",
+    content_text: str = "Default content text.",
+    authenticity_score: int | None = None,
+    tags: list[str] | None = None,
+) -> Content:
+    """Create a Content row directly for filter/list tests."""
+    content = Content(
+        id=nanoid.generate(),
+        clone_id=clone_id,
+        platform=platform,
+        status=status,
+        content_current=content_text,
+        content_original=content_text,
+        input_text="test input",
+        authenticity_score=authenticity_score,
+        tags=tags or [],
+        word_count=len(content_text.split()),
+        char_count=len(content_text),
+    )
+    session.add(content)
+    await session.flush()
+    return content
+
+
 async def _create_clone(session: AsyncSession) -> VoiceClone:
     clone = VoiceClone(id=nanoid.generate(), name="Test Clone")
     session.add(clone)
@@ -424,3 +453,175 @@ class TestContentVersions:
 
         with pytest.raises(ValueError, match="not found"):
             await service.restore_version(content.id, version_number=999)
+
+
+class TestListContent:
+    async def test_list_content_paginated(self, session: AsyncSession) -> None:
+        """list_content with no filters returns paginated list sorted by created_at desc."""
+        clone = await _create_clone_with_dna(session)
+        await _create_content_item(session, clone.id, content_text="First")
+        await _create_content_item(session, clone.id, content_text="Second")
+        await _create_content_item(session, clone.id, content_text="Third")
+
+        mock_provider = AsyncMock()
+        service = ContentService(session, mock_provider)
+        items, total = await service.list_content()
+
+        assert total == 3
+        assert len(items) == 3
+
+    async def test_list_content_offset_limit(self, session: AsyncSession) -> None:
+        """list_content with offset and limit returns correct page."""
+        clone = await _create_clone_with_dna(session)
+        for i in range(5):
+            await _create_content_item(session, clone.id, content_text=f"Item {i}")
+
+        mock_provider = AsyncMock()
+        service = ContentService(session, mock_provider)
+        items, total = await service.list_content(offset=2, limit=2)
+
+        assert total == 5
+        assert len(items) == 2
+
+    async def test_filter_by_clone(self, session: AsyncSession) -> None:
+        """list_content with clone_id filter returns only content for that clone."""
+        clone_a = await _create_clone_with_dna(session)
+        clone_b = await _create_clone(session)
+        await _create_dna(session, clone_b.id)
+
+        await _create_content_item(session, clone_a.id, content_text="Clone A content")
+        await _create_content_item(session, clone_b.id, content_text="Clone B content")
+
+        mock_provider = AsyncMock()
+        service = ContentService(session, mock_provider)
+        items, total = await service.list_content(clone_id=clone_a.id)
+
+        assert total == 1
+        assert items[0].clone_id == clone_a.id
+
+    async def test_filter_by_platform(self, session: AsyncSession) -> None:
+        """list_content with platform filter returns only matching platform."""
+        clone = await _create_clone_with_dna(session)
+        await _create_content_item(session, clone.id, platform="linkedin")
+        await _create_content_item(session, clone.id, platform="twitter")
+
+        mock_provider = AsyncMock()
+        service = ContentService(session, mock_provider)
+        items, total = await service.list_content(platform="linkedin")
+
+        assert total == 1
+        assert items[0].platform == "linkedin"
+
+    async def test_filter_by_status(self, session: AsyncSession) -> None:
+        """list_content with status filter returns only matching status."""
+        clone = await _create_clone_with_dna(session)
+        await _create_content_item(session, clone.id, status="draft")
+        await _create_content_item(session, clone.id, status="review")
+        await _create_content_item(session, clone.id, status="published")
+
+        mock_provider = AsyncMock()
+        service = ContentService(session, mock_provider)
+        items, total = await service.list_content(status="draft")
+
+        assert total == 1
+        assert items[0].status == "draft"
+
+    async def test_full_text_search(self, session: AsyncSession) -> None:
+        """list_content with search returns content matching keyword in content_current."""
+        clone = await _create_clone_with_dna(session)
+        await _create_content_item(session, clone.id, content_text="Machine learning is great")
+        await _create_content_item(session, clone.id, content_text="Cooking tips for beginners")
+
+        mock_provider = AsyncMock()
+        service = ContentService(session, mock_provider)
+        items, total = await service.list_content(search="machine")
+
+        assert total == 1
+        assert "machine" in items[0].content_current.lower()
+
+    async def test_sort_by_score(self, session: AsyncSession) -> None:
+        """list_content sorted by authenticity_score desc returns highest first."""
+        clone = await _create_clone_with_dna(session)
+        await _create_content_item(session, clone.id, authenticity_score=60)
+        await _create_content_item(session, clone.id, authenticity_score=90)
+        await _create_content_item(session, clone.id, authenticity_score=75)
+
+        mock_provider = AsyncMock()
+        service = ContentService(session, mock_provider)
+        items, total = await service.list_content(sort="authenticity_score", order="desc")
+
+        assert total == 3
+        assert items[0].authenticity_score == 90
+        assert items[1].authenticity_score == 75
+        assert items[2].authenticity_score == 60
+
+    async def test_combined_filters(self, session: AsyncSession) -> None:
+        """list_content with multiple filters combines them with AND logic."""
+        clone = await _create_clone_with_dna(session)
+        await _create_content_item(session, clone.id, platform="linkedin", status="draft")
+        await _create_content_item(session, clone.id, platform="linkedin", status="published")
+        await _create_content_item(session, clone.id, platform="twitter", status="draft")
+
+        mock_provider = AsyncMock()
+        service = ContentService(session, mock_provider)
+        items, total = await service.list_content(platform="linkedin", status="draft")
+
+        assert total == 1
+        assert items[0].platform == "linkedin"
+        assert items[0].status == "draft"
+
+
+class TestBulkOperations:
+    async def test_bulk_status_update(self, session: AsyncSession) -> None:
+        """bulk_update_status should update status for all specified content items."""
+        clone = await _create_clone_with_dna(session)
+        c1 = await _create_content_item(session, clone.id, status="draft")
+        c2 = await _create_content_item(session, clone.id, status="draft")
+        await _create_content_item(session, clone.id, status="draft")  # not updated
+
+        mock_provider = AsyncMock()
+        service = ContentService(session, mock_provider)
+        count = await service.bulk_update_status([c1.id, c2.id], "review")
+
+        assert count == 2
+        updated_c1 = await service.get_by_id(c1.id)
+        updated_c2 = await service.get_by_id(c2.id)
+        assert updated_c1.status == "review"
+        assert updated_c2.status == "review"
+
+    async def test_bulk_delete(self, session: AsyncSession) -> None:
+        """bulk_delete should delete all specified content items."""
+        clone = await _create_clone_with_dna(session)
+        c1 = await _create_content_item(session, clone.id)
+        c2 = await _create_content_item(session, clone.id)
+        c3 = await _create_content_item(session, clone.id)
+
+        mock_provider = AsyncMock()
+        service = ContentService(session, mock_provider)
+        count = await service.bulk_delete([c1.id, c2.id])
+
+        assert count == 2
+        # c3 should still exist
+        remaining = await service.get_by_id(c3.id)
+        assert remaining.id == c3.id
+        # c1 and c2 should be gone
+        with pytest.raises(ContentNotFoundError):
+            await service.get_by_id(c1.id)
+
+    async def test_bulk_add_tags(self, session: AsyncSession) -> None:
+        """bulk_add_tags should add tags to all specified content items."""
+        clone = await _create_clone_with_dna(session)
+        c1 = await _create_content_item(session, clone.id, tags=["existing"])
+        c2 = await _create_content_item(session, clone.id, tags=[])
+
+        mock_provider = AsyncMock()
+        service = ContentService(session, mock_provider)
+        count = await service.bulk_add_tags([c1.id, c2.id], ["new-tag", "another"])
+
+        assert count == 2
+        updated_c1 = await service.get_by_id(c1.id)
+        updated_c2 = await service.get_by_id(c2.id)
+        assert "new-tag" in updated_c1.tags
+        assert "another" in updated_c1.tags
+        assert "existing" in updated_c1.tags  # preserves existing tags
+        assert "new-tag" in updated_c2.tags
