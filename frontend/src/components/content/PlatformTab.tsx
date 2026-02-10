@@ -1,5 +1,5 @@
-import { Loader2, RefreshCw, Save, Shield } from 'lucide-react';
-import { useState } from 'react';
+import { Loader2, RefreshCw, Save, Shield, Sparkles } from 'lucide-react';
+import { useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import { type PlatformKey, PLATFORMS } from '@/types/platforms';
 import { AuthenticityScore } from './AuthenticityScore';
 import { DimensionBreakdown } from './DimensionBreakdown';
 import { ExportMenu } from './ExportMenu';
+import { FeedbackInput } from './FeedbackInput';
 
 interface PlatformTabProps {
   content: ContentResponse;
@@ -32,6 +33,10 @@ interface PlatformTabProps {
   isRegenerating: boolean;
   isScoring: boolean;
   scoreResult: AuthenticityScoreResponse | null;
+  onFeedbackRegen?: (feedback: string) => void;
+  isFeedbackRegenerating?: boolean;
+  onPartialRegen?: (start: number, end: number) => void;
+  isPartialRegenerating?: boolean;
 }
 
 export function PlatformTab({
@@ -45,8 +50,15 @@ export function PlatformTab({
   isRegenerating,
   isScoring,
   scoreResult,
+  onFeedbackRegen,
+  isFeedbackRegenerating = false,
+  onPartialRegen,
+  isPartialRegenerating = false,
 }: PlatformTabProps) {
   const [showThread, setShowThread] = useState(false);
+  const [selectionStart, setSelectionStart] = useState<number | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const platform = content.platform as PlatformKey;
   const platformInfo = PLATFORMS[platform];
@@ -65,8 +77,19 @@ export function PlatformTab({
     <div className="space-y-4">
       {/* Textarea */}
       <Textarea
+        ref={textareaRef}
         value={editedText}
         onChange={(e) => onTextChange(e.target.value)}
+        onSelect={(e) => {
+          const target = e.target as HTMLTextAreaElement;
+          if (target.selectionStart !== target.selectionEnd) {
+            setSelectionStart(target.selectionStart);
+            setSelectionEnd(target.selectionEnd);
+          } else {
+            setSelectionStart(null);
+            setSelectionEnd(null);
+          }
+        }}
         rows={8}
         className="resize-y font-mono text-sm"
       />
@@ -81,6 +104,15 @@ export function PlatformTab({
         </div>
         <Progress value={progressPercent} />
       </div>
+
+      {/* Feedback-driven regen */}
+      {onFeedbackRegen && (
+        <FeedbackInput
+          onSubmit={onFeedbackRegen}
+          isLoading={isFeedbackRegenerating}
+          disabled={hasUnsavedChanges}
+        />
+      )}
 
       {/* Unsaved changes badge */}
       {hasUnsavedChanges && <Badge variant="outline">Unsaved changes</Badge>}
@@ -139,6 +171,20 @@ export function PlatformTab({
           {isScoring ? <Loader2 className="size-4 animate-spin" /> : <Shield className="size-4" />}
           Check Authenticity
         </Button>
+        {onPartialRegen && selectionStart !== null && selectionEnd !== null && (
+          <Button
+            variant="outline"
+            onClick={() => onPartialRegen(selectionStart, selectionEnd)}
+            disabled={isPartialRegenerating}
+          >
+            {isPartialRegenerating ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Sparkles className="size-4" />
+            )}
+            Regenerate Selection
+          </Button>
+        )}
         <ExportMenu items={[content]} />
       </div>
     </div>

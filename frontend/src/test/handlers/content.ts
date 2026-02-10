@@ -130,4 +130,23 @@ export const contentHandlers = [
       })
     );
   }),
+
+  http.post('/api/content/:id/feedback-regen', async ({ params, request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(
+      buildContentItem({
+        id: params.id as string,
+        content_current: `Improved: ${body.feedback as string}`,
+      })
+    );
+  }),
+
+  http.post('/api/content/:id/partial-regen', async ({ params }) => {
+    return HttpResponse.json(
+      buildContentItem({
+        id: params.id as string,
+        content_current: 'Partially regenerated content.',
+      })
+    );
+  }),
 ];

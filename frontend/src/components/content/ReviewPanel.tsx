@@ -2,7 +2,13 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useRegenerateContent, useScoreContent, useUpdateContent } from '@/hooks/use-content';
+import {
+  useFeedbackRegen,
+  usePartialRegen,
+  useRegenerateContent,
+  useScoreContent,
+  useUpdateContent,
+} from '@/hooks/use-content';
 import type { AuthenticityScoreResponse, ContentResponse } from '@/types/api';
 import { type PlatformKey, PLATFORMS } from '@/types/platforms';
 
@@ -32,6 +38,8 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
   const updateMutation = useUpdateContent();
   const regenerateMutation = useRegenerateContent();
   const scoreMutation = useScoreContent();
+  const feedbackRegenMutation = useFeedbackRegen();
+  const partialRegenMutation = usePartialRegen();
 
   function handleTextChange(contentId: string, text: string) {
     setEditedContent((prev) => ({ ...prev, [contentId]: text }));
@@ -58,6 +66,32 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
         setScoreResults((prev) => ({ ...prev, [item.id]: data }));
       },
     });
+  }
+
+  function handleFeedbackRegen(item: ContentResponse, feedback: string) {
+    feedbackRegenMutation.mutate(
+      { id: item.id, feedback },
+      {
+        onSuccess: (data) => {
+          setLocalItems((prev) => prev.map((i) => (i.id === item.id ? data : i)));
+          setEditedContent((prev) => ({ ...prev, [data.id]: data.content_current }));
+          toast.success('Content improved with feedback');
+        },
+      }
+    );
+  }
+
+  function handlePartialRegen(item: ContentResponse, start: number, end: number) {
+    partialRegenMutation.mutate(
+      { id: item.id, selection_start: start, selection_end: end },
+      {
+        onSuccess: (data) => {
+          setLocalItems((prev) => prev.map((i) => (i.id === item.id ? data : i)));
+          setEditedContent((prev) => ({ ...prev, [data.id]: data.content_current }));
+          toast.success('Selection regenerated');
+        },
+      }
+    );
   }
 
   function handleRegenerate(item: ContentResponse) {
@@ -108,6 +142,10 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
             isRegenerating={regenerateMutation.isPending}
             isScoring={scoreMutation.isPending}
             scoreResult={scoreResults[item.id] ?? null}
+            onFeedbackRegen={(feedback) => handleFeedbackRegen(item, feedback)}
+            isFeedbackRegenerating={feedbackRegenMutation.isPending}
+            onPartialRegen={(start, end) => handlePartialRegen(item, start, end)}
+            isPartialRegenerating={partialRegenMutation.isPending}
           />
         </TabsContent>
       ))}

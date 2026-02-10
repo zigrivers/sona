@@ -72,6 +72,94 @@ def build_generation_prompt(
     ]
 
 
+def build_feedback_regen_prompt(
+    dna: dict[str, str],
+    platform: str,
+    current_text: str,
+    feedback: str,
+    properties: dict[str, str] | None = None,
+) -> list[dict[str, str]]:
+    """Build a message list for feedback-driven content regeneration.
+
+    Args:
+        dna: Voice DNA profile dict with trait dimensions.
+        platform: Target platform (e.g. "twitter", "linkedin").
+        current_text: The current content text to improve.
+        feedback: User feedback/guidance for the rewrite.
+        properties: Optional extra generation properties.
+
+    Returns:
+        A list of message dicts with role/content keys.
+    """
+    dna_summary = "\n".join(f"- {key}: {value}" for key, value in dna.items())
+
+    system_parts = [
+        "You are a ghostwriter that matches the user's unique voice.",
+        f"Voice DNA profile:\n{dna_summary}",
+        f"Target platform: {platform}.",
+        "Rewrite the content incorporating the feedback while maintaining the voice.",
+    ]
+    if properties:
+        props_text = ", ".join(f"{k}={v}" for k, v in properties.items())
+        system_parts.append(f"Additional properties: {props_text}.")
+
+    user_content = f"Current content:\n\n{current_text}\n\nFeedback: {feedback}"
+
+    return [
+        {"role": "system", "content": "\n\n".join(system_parts)},
+        {"role": "user", "content": user_content},
+    ]
+
+
+def build_partial_regen_prompt(
+    dna: dict[str, str],
+    platform: str,
+    text_before: str,
+    selected_text: str,
+    text_after: str,
+    feedback: str | None = None,
+    properties: dict[str, str] | None = None,
+) -> list[dict[str, str]]:
+    """Build a message list for partial content regeneration.
+
+    Args:
+        dna: Voice DNA profile dict with trait dimensions.
+        platform: Target platform.
+        text_before: Text before the selected portion.
+        selected_text: The selected text to rewrite.
+        text_after: Text after the selected portion.
+        feedback: Optional user guidance for the rewrite.
+        properties: Optional extra generation properties.
+
+    Returns:
+        A list of message dicts with role/content keys.
+    """
+    dna_summary = "\n".join(f"- {key}: {value}" for key, value in dna.items())
+
+    system_parts = [
+        "You are a ghostwriter that matches the user's unique voice.",
+        f"Voice DNA profile:\n{dna_summary}",
+        f"Target platform: {platform}.",
+        "Rewrite ONLY the selected portion. Return ONLY the replacement text.",
+    ]
+    if properties:
+        props_text = ", ".join(f"{k}={v}" for k, v in properties.items())
+        system_parts.append(f"Additional properties: {props_text}.")
+
+    user_parts = [
+        text_before,
+        f"--- REWRITE THIS ---\n{selected_text}\n--- END REWRITE ---",
+        text_after,
+    ]
+    if feedback:
+        user_parts.append(f"\nGuidance: {feedback}")
+
+    return [
+        {"role": "system", "content": "\n\n".join(system_parts)},
+        {"role": "user", "content": "\n".join(user_parts)},
+    ]
+
+
 _SCORING_DIMENSIONS = [
     "vocabulary_match",
     "sentence_flow",

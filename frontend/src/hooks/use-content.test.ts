@@ -6,7 +6,13 @@ import { describe, expect, it } from 'vitest';
 
 import { server } from '@/test/handlers';
 
-import { useRegenerateContent, useScoreContent, useUpdateContent } from './use-content';
+import {
+  useFeedbackRegen,
+  usePartialRegen,
+  useRegenerateContent,
+  useScoreContent,
+  useUpdateContent,
+} from './use-content';
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -141,5 +147,99 @@ describe('useRegenerateContent', () => {
     expect(capturedBody).not.toBeNull();
     expect((capturedBody as unknown as Record<string, unknown>).platforms).toEqual(['twitter']);
     expect(result.current.data?.items).toHaveLength(1);
+  });
+});
+
+describe('useFeedbackRegen', () => {
+  it('calls POST /api/content/:id/feedback-regen', async () => {
+    let capturedUrl = '';
+    let capturedBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post('/api/content/:id/feedback-regen', async ({ request }) => {
+        capturedUrl = new URL(request.url).pathname;
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          id: 'content-1',
+          clone_id: 'clone-1',
+          platform: 'linkedin',
+          status: 'draft',
+          content_current: 'Improved content.',
+          content_original: 'Original content.',
+          input_text: 'Write something.',
+          generation_properties: null,
+          authenticity_score: null,
+          score_dimensions: null,
+          topic: null,
+          campaign: null,
+          tags: [],
+          word_count: 2,
+          char_count: 18,
+          preset_id: null,
+          created_at: '2026-01-15T10:00:00Z',
+          updated_at: '2026-01-15T10:00:00Z',
+        });
+      })
+    );
+
+    const { result } = renderHook(() => useFeedbackRegen(), {
+      wrapper: createWrapper(),
+    });
+
+    result.current.mutate({ id: 'content-1', feedback: 'Make it shorter.' });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(capturedUrl).toBe('/api/content/content-1/feedback-regen');
+    expect(capturedBody).not.toBeNull();
+    expect((capturedBody as unknown as Record<string, unknown>).feedback).toBe('Make it shorter.');
+  });
+});
+
+describe('usePartialRegen', () => {
+  it('calls POST /api/content/:id/partial-regen', async () => {
+    let capturedUrl = '';
+    let capturedBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post('/api/content/:id/partial-regen', async ({ request }) => {
+        capturedUrl = new URL(request.url).pathname;
+        capturedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          id: 'content-1',
+          clone_id: 'clone-1',
+          platform: 'linkedin',
+          status: 'draft',
+          content_current: 'Partially regenerated.',
+          content_original: 'Original content.',
+          input_text: 'Write something.',
+          generation_properties: null,
+          authenticity_score: null,
+          score_dimensions: null,
+          topic: null,
+          campaign: null,
+          tags: [],
+          word_count: 2,
+          char_count: 22,
+          preset_id: null,
+          created_at: '2026-01-15T10:00:00Z',
+          updated_at: '2026-01-15T10:00:00Z',
+        });
+      })
+    );
+
+    const { result } = renderHook(() => usePartialRegen(), {
+      wrapper: createWrapper(),
+    });
+
+    result.current.mutate({
+      id: 'content-1',
+      selection_start: 0,
+      selection_end: 10,
+      feedback: 'More formal.',
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(capturedUrl).toBe('/api/content/content-1/partial-regen');
+    expect(capturedBody).not.toBeNull();
+    expect((capturedBody as unknown as Record<string, unknown>).selection_start).toBe(0);
+    expect((capturedBody as unknown as Record<string, unknown>).selection_end).toBe(10);
   });
 });

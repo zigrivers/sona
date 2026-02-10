@@ -10,7 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.exceptions import CloneNotFoundError, ContentNotFoundError
 from app.llm.base import LLMProvider
-from app.llm.prompts import build_generation_prompt
+from app.llm.prompts import (
+    build_feedback_regen_prompt,
+    build_generation_prompt,
+    build_partial_regen_prompt,
+)
 from app.models.clone import VoiceClone
 from app.models.content import Content, ContentVersion
 from app.models.dna import VoiceDNAVersion
@@ -298,6 +302,107 @@ class ContentService:
         content.word_count = old_version.word_count
         content.char_count = len(old_version.content_text)
         await self._create_version(content, trigger="restore")
+        await self._session.flush()
+        return content
+
+    # ── Feedback / Partial Regen ─────────────────────────────────
+
+    async def feedback_regen(self, content_id: str, feedback: str) -> Content:
+        """Regenerate content incorporating user feedback.
+
+        Updates content_current in-place and creates a new ContentVersion.
+
+        Raises:
+            ContentNotFoundError: If content doesn't exist.
+            ValueError: If no provider or no DNA.
+        """
+        if self._provider is None:
+            msg = "LLM provider required for content generation"
+            raise ValueError(msg)
+
+        content = await self.get_by_id(content_id)
+        dna = await self._get_latest_dna(content.clone_id)
+        methodology = await self._get_methodology()
+
+        raw_data = cast(dict[str, Any], dna.data)  # pyright: ignore[reportUnknownMemberType]
+        dna_data: dict[str, str] = {str(k): str(v) for k, v in raw_data.items()}
+
+        messages = build_feedback_regen_prompt(
+            dna=dna_data,
+            platform=content.platform,
+            current_text=content.content_current,
+            feedback=feedback,
+        )
+
+        if methodology:
+            system_msg = messages[0]["content"]
+            messages[0]["content"] = f"{system_msg}\n\nMethodology: {methodology}"
+
+        new_text = await self._provider.complete(messages)
+
+        content.content_current = new_text
+        content.word_count = len(new_text.split())
+        content.char_count = len(new_text)
+        await self._create_version(content, trigger="feedback_regen")
+        await self._session.flush()
+        return content
+
+    async def partial_regen(
+        self,
+        content_id: str,
+        selection_start: int,
+        selection_end: int,
+        feedback: str | None = None,
+    ) -> Content:
+        """Regenerate only the selected portion of content.
+
+        Replaces text between selection_start and selection_end with LLM output.
+        Creates a new ContentVersion.
+
+        Raises:
+            ContentNotFoundError: If content doesn't exist.
+            ValueError: If no provider, no DNA, or invalid selection range.
+        """
+        if self._provider is None:
+            msg = "LLM provider required for content generation"
+            raise ValueError(msg)
+
+        content = await self.get_by_id(content_id)
+
+        text = content.content_current
+        if selection_start < 0 or selection_end > len(text) or selection_start >= selection_end:
+            msg = "Invalid selection range"
+            raise ValueError(msg)
+
+        dna = await self._get_latest_dna(content.clone_id)
+        methodology = await self._get_methodology()
+
+        raw_data = cast(dict[str, Any], dna.data)  # pyright: ignore[reportUnknownMemberType]
+        dna_data: dict[str, str] = {str(k): str(v) for k, v in raw_data.items()}
+
+        text_before = text[:selection_start]
+        selected_text = text[selection_start:selection_end]
+        text_after = text[selection_end:]
+
+        messages = build_partial_regen_prompt(
+            dna=dna_data,
+            platform=content.platform,
+            text_before=text_before,
+            selected_text=selected_text,
+            text_after=text_after,
+            feedback=feedback,
+        )
+
+        if methodology:
+            system_msg = messages[0]["content"]
+            messages[0]["content"] = f"{system_msg}\n\nMethodology: {methodology}"
+
+        replacement = await self._provider.complete(messages)
+
+        content.content_current = text_before + replacement + text_after
+        content.word_count = len(content.content_current.split())
+        content.char_count = len(content.content_current)
+        await self._create_version(content, trigger="partial_regen")
         await self._session.flush()
         return content
 

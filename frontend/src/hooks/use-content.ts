@@ -124,6 +124,42 @@ export function useRegenerateContent() {
   });
 }
 
+interface FeedbackRegenRequest {
+  id: string;
+  feedback: string;
+}
+
+export function useFeedbackRegen() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, feedback }: FeedbackRegenRequest) =>
+      api.post<ContentResponse>(`/api/content/${id}/feedback-regen`, { feedback }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.versions(variables.id) });
+    },
+  });
+}
+
+interface PartialRegenRequest {
+  id: string;
+  selection_start: number;
+  selection_end: number;
+  feedback?: string;
+}
+
+export function usePartialRegen() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: PartialRegenRequest) =>
+      api.post<ContentResponse>(`/api/content/${id}/partial-regen`, body),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.versions(variables.id) });
+    },
+  });
+}
+
 export function useContentVersions(contentId: string) {
   return useQuery({
     queryKey: queryKeys.content.versions(contentId),

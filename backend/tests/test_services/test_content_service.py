@@ -614,3 +614,168 @@ class TestBulkOperations:
         assert "another" in updated_c1.tags
         assert "existing" in updated_c1.tags  # preserves existing tags
         assert "new-tag" in updated_c2.tags
+
+
+class TestFeedbackRegen:
+    async def test_updates_content_current(self, session: AsyncSession) -> None:
+        """feedback_regen should update content_current with LLM output."""
+        clone = await _create_clone_with_dna(session)
+        content = await _generate_content(session, clone)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value="Improved content with feedback.")
+        service = ContentService(session, mock_provider)
+        result = await service.feedback_regen(content.id, "Make it shorter.")
+
+        assert result.content_current == "Improved content with feedback."
+
+    async def test_preserves_content_original(self, session: AsyncSession) -> None:
+        """feedback_regen should not change content_original."""
+        clone = await _create_clone_with_dna(session)
+        content = await _generate_content(session, clone)
+        original = content.content_original
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value="New content.")
+        service = ContentService(session, mock_provider)
+        result = await service.feedback_regen(content.id, "Change it.")
+
+        assert result.content_original == original
+
+    async def test_creates_version_with_feedback_regen_trigger(self, session: AsyncSession) -> None:
+        """feedback_regen should create a ContentVersion with trigger=feedback_regen."""
+        clone = await _create_clone_with_dna(session)
+        content = await _generate_content(session, clone)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value="Feedback result.")
+        service = ContentService(session, mock_provider)
+        await service.feedback_regen(content.id, "More humor.")
+
+        versions = await service.list_versions(content.id)
+        feedback_versions = [v for v in versions if v.trigger == "feedback_regen"]
+        assert len(feedback_versions) == 1
+        assert feedback_versions[0].content_text == "Feedback result."
+
+    async def test_includes_feedback_in_prompt(self, session: AsyncSession) -> None:
+        """feedback_regen should pass user feedback to the LLM prompt."""
+        clone = await _create_clone_with_dna(session)
+        content = await _generate_content(session, clone)
+
+        captured_messages: list[list[dict[str, str]]] = []
+
+        async def capture_complete(messages: list[dict[str, str]], **kwargs: Any) -> str:
+            captured_messages.append(messages)
+            return "Result."
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(side_effect=capture_complete)
+        service = ContentService(session, mock_provider)
+        await service.feedback_regen(content.id, "Make it funnier.")
+
+        assert len(captured_messages) == 1
+        full_text = " ".join(m["content"] for m in captured_messages[0])
+        assert "Make it funnier." in full_text
+
+    async def test_errors_without_provider(self, session: AsyncSession) -> None:
+        """feedback_regen should raise ValueError when no provider is configured."""
+        clone = await _create_clone_with_dna(session)
+        content = await _generate_content(session, clone)
+
+        service = ContentService(session, None)
+        with pytest.raises(ValueError, match="[Pp]rovider"):
+            await service.feedback_regen(content.id, "Feedback.")
+
+    async def test_errors_without_dna(self, session: AsyncSession) -> None:
+        """feedback_regen should raise ValueError when clone has no DNA."""
+        clone = await _create_clone(session)
+        content = await _create_content_item(session, clone.id, content_text="Some text.")
+
+        mock_provider = AsyncMock()
+        service = ContentService(session, mock_provider)
+        with pytest.raises(ValueError, match="[Dd]NA"):
+            await service.feedback_regen(content.id, "Feedback.")
+
+
+class TestPartialRegen:
+    async def test_replaces_selection_only(self, session: AsyncSession) -> None:
+        """partial_regen should replace only the selected range."""
+        clone = await _create_clone_with_dna(session)
+        content = await _generate_content(session, clone)
+
+        # Override content to something predictable
+        mock_provider_update = AsyncMock()
+        svc = ContentService(session, mock_provider_update)
+        await svc.update(content.id, ContentUpdate(content_current="Hello world, how are you?"))
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value="everyone")
+        service = ContentService(session, mock_provider)
+        # Select "world" (indices 6-11)
+        result = await service.partial_regen(content.id, 6, 11)
+
+        assert result.content_current == "Hello everyone, how are you?"
+
+    async def test_preserves_content_original(self, session: AsyncSession) -> None:
+        """partial_regen should not change content_original."""
+        clone = await _create_clone_with_dna(session)
+        content = await _generate_content(session, clone)
+        original = content.content_original
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value="replaced")
+        service = ContentService(session, mock_provider)
+        result = await service.partial_regen(content.id, 0, 5)
+
+        assert result.content_original == original
+
+    async def test_creates_version_with_partial_regen_trigger(self, session: AsyncSession) -> None:
+        """partial_regen should create a ContentVersion with trigger=partial_regen."""
+        clone = await _create_clone_with_dna(session)
+        content = await _generate_content(session, clone)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value="x")
+        service = ContentService(session, mock_provider)
+        await service.partial_regen(content.id, 0, 1)
+
+        versions = await service.list_versions(content.id)
+        partial_versions = [v for v in versions if v.trigger == "partial_regen"]
+        assert len(partial_versions) == 1
+
+    async def test_rejects_invalid_range(self, session: AsyncSession) -> None:
+        """partial_regen should raise ValueError for out-of-bounds selection."""
+        clone = await _create_clone_with_dna(session)
+        content = await _generate_content(session, clone)
+
+        mock_provider = AsyncMock()
+        service = ContentService(session, mock_provider)
+
+        with pytest.raises(ValueError, match="[Ii]nvalid selection"):
+            await service.partial_regen(content.id, 0, 9999)
+
+    async def test_includes_context_in_prompt(self, session: AsyncSession) -> None:
+        """partial_regen should pass before/selected/after context to the LLM prompt."""
+        clone = await _create_clone_with_dna(session)
+        content = await _generate_content(session, clone)
+
+        # Set content to something predictable
+        svc = ContentService(session, AsyncMock())
+        await svc.update(content.id, ContentUpdate(content_current="AAABBBCCC"))
+
+        captured_messages: list[list[dict[str, str]]] = []
+
+        async def capture_complete(messages: list[dict[str, str]], **kwargs: Any) -> str:
+            captured_messages.append(messages)
+            return "X"
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(side_effect=capture_complete)
+        service = ContentService(session, mock_provider)
+        await service.partial_regen(content.id, 3, 6)
+
+        assert len(captured_messages) == 1
+        full_text = " ".join(m["content"] for m in captured_messages[0])
+        assert "AAA" in full_text
+        assert "BBB" in full_text
+        assert "CCC" in full_text

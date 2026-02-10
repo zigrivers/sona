@@ -28,6 +28,8 @@ from app.schemas.content import (
     ContentUpdate,
     ContentVersionListResponse,
     ContentVersionResponse,
+    FeedbackRegenRequest,
+    PartialRegenRequest,
 )
 from app.schemas.scoring import AuthenticityScoreResponse
 from app.services.content_service import ContentService
@@ -283,6 +285,51 @@ async def restore_content_version(
         return JSONResponse(
             status_code=400,
             content={"detail": str(exc), "code": "VERSION_NOT_FOUND"},
+        )
+    await session.commit()
+    return ContentResponse.model_validate(content)
+
+
+@router.post("/{content_id}/feedback-regen", response_model=ContentResponse)
+async def feedback_regen(
+    content_id: str,
+    body: FeedbackRegenRequest,
+    session: SessionDep,
+    provider: ProviderDep,
+) -> ContentResponse | JSONResponse:
+    """Regenerate content incorporating user feedback."""
+    service = ContentService(session, provider)
+    try:
+        content = await service.feedback_regen(content_id, body.feedback)
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": str(exc), "code": "DNA_REQUIRED"},
+        )
+    await session.commit()
+    return ContentResponse.model_validate(content)
+
+
+@router.post("/{content_id}/partial-regen", response_model=ContentResponse)
+async def partial_regen(
+    content_id: str,
+    body: PartialRegenRequest,
+    session: SessionDep,
+    provider: ProviderDep,
+) -> ContentResponse | JSONResponse:
+    """Regenerate only the selected portion of content."""
+    service = ContentService(session, provider)
+    try:
+        content = await service.partial_regen(
+            content_id,
+            body.selection_start,
+            body.selection_end,
+            feedback=body.feedback,
+        )
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": str(exc), "code": "INVALID_SELECTION"},
         )
     await session.commit()
     return ContentResponse.model_validate(content)
