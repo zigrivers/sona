@@ -19,3 +19,7 @@ class ProviderResponse(BaseModel):
 class ProviderTestResponse(BaseModel):
     success: bool
     message: str
+
+
+class DefaultProviderRequest(BaseModel):
+    name: str
