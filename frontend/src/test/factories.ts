@@ -3,6 +3,7 @@ import type {
   ContentResponse,
   MethodologyResponse,
   MethodologyVersionResponse,
+  ProviderResponse,
   SampleResponse,
 } from '@/types/api';
 
@@ -50,6 +51,17 @@ export function buildContent(overrides: Partial<ContentResponse> = {}): ContentR
     preset_id: null,
     created_at: NOW,
     updated_at: NOW,
+    ...overrides,
+  };
+}
+
+export function buildProvider(overrides: Partial<ProviderResponse> = {}): ProviderResponse {
+  return {
+    name: 'openai',
+    is_configured: false,
+    masked_key: null,
+    default_model: null,
+    available_models: ['gpt-4o', 'gpt-4o-mini'],
     ...overrides,
   };
 }
