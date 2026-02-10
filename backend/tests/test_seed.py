@@ -1,10 +1,13 @@
-"""Tests for methodology seed defaults."""
+"""Tests for methodology seed defaults and demo voice clones."""
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.clone import VoiceClone
+from app.models.dna import VoiceDNAVersion
 from app.models.methodology import MethodologySettings, MethodologyVersion
-from app.seed import SECTION_KEYS, seed_methodology_defaults
+from app.models.sample import WritingSample
+from app.seed import SECTION_KEYS, seed_demo_clones, seed_methodology_defaults
 
 
 class TestSeedCreation:
@@ -152,3 +155,122 @@ class TestPlatformContent:
         ]
         for platform in platforms:
             assert platform in content, f"Platform content missing '{platform}'"
+
+
+# ── Demo voice clone tests ────────────────────────────────────────
+
+
+class TestSeedDemoClones:
+    async def test_creates_three_demo_clones(self, session: AsyncSession) -> None:
+        """seed_demo_clones creates exactly 3 demo clones."""
+        await seed_demo_clones(session)
+
+        stmt = select(VoiceClone).where(VoiceClone.is_demo.is_(True))
+        result = await session.execute(stmt)
+        clones = list(result.scalars().all())
+
+        assert len(clones) == 3
+        names = {c.name for c in clones}
+        assert names == {"Professional Blogger", "Casual Social", "Technical Writer"}
+
+    async def test_seed_idempotent(self, session: AsyncSession) -> None:
+        """Running seed_demo_clones twice does not duplicate clones."""
+        await seed_demo_clones(session)
+        await seed_demo_clones(session)
+
+        stmt = select(VoiceClone).where(VoiceClone.is_demo.is_(True))
+        result = await session.execute(stmt)
+        clones = list(result.scalars().all())
+
+        assert len(clones) == 3
+
+    async def test_demo_clones_have_samples(self, session: AsyncSession) -> None:
+        """Each demo clone has 3-5 writing samples."""
+        await seed_demo_clones(session)
+
+        stmt = select(VoiceClone).where(VoiceClone.is_demo.is_(True))
+        result = await session.execute(stmt)
+        clones = list(result.scalars().all())
+
+        for clone in clones:
+            stmt = select(WritingSample).where(WritingSample.clone_id == clone.id)
+            result = await session.execute(stmt)
+            samples = list(result.scalars().all())
+            assert 3 <= len(samples) <= 5, (
+                f"Clone '{clone.name}' has {len(samples)} samples, expected 3-5"
+            )
+            for sample in samples:
+                assert sample.word_count > 0
+                assert sample.source_type == "paste"
+                assert sample.content_type == "text/plain"
+
+    async def test_demo_clones_have_dna(self, session: AsyncSession) -> None:
+        """Each demo clone has a VoiceDNAVersion with all 9 dimensions."""
+        await seed_demo_clones(session)
+
+        dimensions = [
+            "vocabulary",
+            "sentence_structure",
+            "paragraph_structure",
+            "tone",
+            "rhetorical_devices",
+            "punctuation",
+            "openings_and_closings",
+            "humor",
+            "signatures",
+        ]
+
+        stmt = select(VoiceClone).where(VoiceClone.is_demo.is_(True))
+        result = await session.execute(stmt)
+        clones = list(result.scalars().all())
+
+        for clone in clones:
+            stmt = select(VoiceDNAVersion).where(VoiceDNAVersion.clone_id == clone.id)
+            result = await session.execute(stmt)
+            dna_versions = list(result.scalars().all())
+            assert len(dna_versions) == 1, (
+                f"Clone '{clone.name}' has {len(dna_versions)} DNA versions, expected 1"
+            )
+            dna = dna_versions[0]
+            for dim in dimensions:
+                assert dim in dna.data, f"DNA for '{clone.name}' missing dimension '{dim}'"
+
+    async def test_demo_clones_have_prominence_scores(self, session: AsyncSession) -> None:
+        """Each demo clone DNA has prominence scores for all 9 dimensions, all >= 80."""
+        await seed_demo_clones(session)
+
+        dimensions = [
+            "vocabulary",
+            "sentence_structure",
+            "paragraph_structure",
+            "tone",
+            "rhetorical_devices",
+            "punctuation",
+            "openings_and_closings",
+            "humor",
+            "signatures",
+        ]
+
+        stmt = select(VoiceClone).where(VoiceClone.is_demo.is_(True))
+        result = await session.execute(stmt)
+        clones = list(result.scalars().all())
+
+        for clone in clones:
+            stmt = select(VoiceDNAVersion).where(VoiceDNAVersion.clone_id == clone.id)
+            result = await session.execute(stmt)
+            dna = result.scalar_one()
+            assert dna.prominence_scores is not None
+            for dim in dimensions:
+                score = dna.prominence_scores[dim]
+                assert score >= 80, f"Clone '{clone.name}' dimension '{dim}' score {score} < 80"
+
+    async def test_demo_clone_is_demo_flag_true(self, session: AsyncSession) -> None:
+        """All seeded demo clones have is_demo=True."""
+        await seed_demo_clones(session)
+
+        stmt = select(VoiceClone).where(VoiceClone.is_demo.is_(True))
+        result = await session.execute(stmt)
+        clones = list(result.scalars().all())
+
+        for clone in clones:
+            assert clone.is_demo is True

@@ -9,7 +9,7 @@ from app.api.router import api_router
 from app.config import PROJECT_ROOT
 from app.database import Base, async_session, engine
 from app.exceptions import SonaError
-from app.seed import seed_methodology_defaults
+from app.seed import seed_demo_clones, seed_methodology_defaults
 
 STATUS_MAP: dict[str, int] = {
     "CLONE_NOT_FOUND": 404,
@@ -36,6 +36,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
 
     async with async_session() as session:
         await seed_methodology_defaults(session)
+        await seed_demo_clones(session)
         await session.commit()
 
     yield

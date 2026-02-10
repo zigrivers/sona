@@ -1,9 +1,14 @@
-"""Seed default methodology content on first startup."""
+"""Seed default methodology content and demo voice clones on first startup."""
+
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.clone import VoiceClone
+from app.models.dna import VoiceDNAVersion
 from app.models.methodology import MethodologySettings, MethodologyVersion
+from app.models.sample import WritingSample
 
 SECTION_KEYS = ["voice_cloning", "authenticity", "platform_practices"]
 
@@ -310,5 +315,445 @@ async def seed_methodology_defaults(session: AsyncSession) -> None:
             trigger="seed",
         )
         session.add(version)
+
+    await session.flush()
+
+
+# ── Demo voice clone data ─────────────────────────────────────────
+
+DEMO_CLONES: list[dict[str, Any]] = [
+    {
+        "name": "Professional Blogger",
+        "description": (
+            "A polished, authoritative voice for long-form content and thought leadership."
+        ),
+        "tags": ["blog", "linkedin", "newsletter"],
+        "samples": [
+            {
+                "content": (
+                    "The most successful content strategies don't start with a content calendar. "
+                    "They start with a single, uncomfortable question: What do we actually have to "
+                    "say that nobody else is saying? I've watched dozens of brands pour resources "
+                    "into publishing schedules, editorial workflows, and distribution plans — only "
+                    "to produce content that sounds exactly like everyone else in their space. The "
+                    "calendar wasn't the problem. The thinking was."
+                ),
+                "content_type": "text/plain",
+                "source_type": "paste",
+                "word_count": 73,
+                "length_category": "short",
+            },
+            {
+                "content": (
+                    "Here's what I've learned after a decade of writing professionally: your first "
+                    "draft is never about the reader. It's about you figuring out what you think. "
+                    "The real writing happens in revision, when you strip away everything that "
+                    "serves the writer and keep only what serves the reader. Most people skip this "
+                    "step. They publish their thinking-out-loud and wonder why it doesn't land. "
+                    "Great writing is generous — it does the hard work so the reader "
+                    "doesn't have to."
+                ),
+                "content_type": "text/plain",
+                "source_type": "paste",
+                "word_count": 85,
+                "length_category": "short",
+            },
+            {
+                "content": (
+                    "I used to believe that good ideas sell themselves. That if your argument is "
+                    "strong enough, the writing doesn't matter. I was wrong. Packaging is not "
+                    "superficial — it's structural. The way you sequence ideas, the rhythm of your "
+                    "sentences, the white space you leave for the reader to think — these aren't "
+                    "cosmetic choices. They're engineering decisions. Every paragraph is a bridge. "
+                    "If even one is shaky, you lose the reader before they reach your conclusion."
+                ),
+                "content_type": "text/plain",
+                "source_type": "paste",
+                "word_count": 82,
+                "length_category": "short",
+            },
+            {
+                "content": (
+                    "Stop optimizing for algorithms and start optimizing for memory. The posts "
+                    "that get shared aren't the ones that rank — they're the ones people remember "
+                    "at dinner. They're the ones that make someone stop scrolling and "
+                    "text a friend. I know this runs counter to every SEO playbook. "
+                    "But the writers who build real "
+                    "audiences aren't gaming systems. They're saying things that stick. That's a "
+                    "fundamentally different skill, and it's the one worth developing."
+                ),
+                "content_type": "text/plain",
+                "source_type": "paste",
+                "word_count": 80,
+                "length_category": "short",
+            },
+        ],
+        "dna": {
+            "vocabulary": {
+                "complexity_level": "moderate",
+                "jargon_usage": "light",
+                "contraction_frequency": "frequent",
+                "word_choice_patterns": "precise and direct, prefers concrete over abstract",
+            },
+            "sentence_structure": {
+                "average_length": "medium",
+                "complexity_variation": "high",
+                "fragment_usage": "occasional",
+                "patterns": "alternates between short punchy and longer complex",
+            },
+            "paragraph_structure": {
+                "average_length": "medium",
+                "transition_style": "smooth",
+                "organization": "linear with occasional circular callbacks",
+            },
+            "tone": {
+                "formality_level": "semi-formal",
+                "warmth": "warm",
+                "primary_tone": "authoritative",
+                "secondary_tone": "conversational",
+            },
+            "rhetorical_devices": {
+                "metaphor_usage": "moderate",
+                "repetition_patterns": "anaphora for emphasis",
+                "rhetorical_questions": "occasional",
+                "storytelling_tendency": "anecdotal",
+            },
+            "punctuation": {
+                "em_dash_frequency": "high",
+                "semicolon_usage": "rare",
+                "exclamation_points": "never",
+                "parenthetical_asides": "occasional",
+                "ellipsis_usage": "never",
+            },
+            "openings_and_closings": {
+                "opening_patterns": "bold statement or contrarian take",
+                "hook_style": "provocative",
+                "closing_patterns": "call to reflection",
+                "cta_style": "soft",
+            },
+            "humor": {
+                "frequency": "rare",
+                "types": "dry wit",
+                "placement": "asides",
+            },
+            "signatures": {
+                "catchphrases": ["Here's what I've learned", "The real question is"],
+                "recurring_themes": ["craft of writing", "authenticity over optimization"],
+                "unique_mannerisms": "uses dashes for dramatic pauses",
+            },
+        },
+        "prominence_scores": {
+            "vocabulary": 82,
+            "sentence_structure": 88,
+            "paragraph_structure": 80,
+            "tone": 90,
+            "rhetorical_devices": 83,
+            "punctuation": 85,
+            "openings_and_closings": 91,
+            "humor": 80,
+            "signatures": 84,
+        },
+    },
+    {
+        "name": "Casual Social",
+        "description": "An upbeat, relatable voice for social media and short-form content.",
+        "tags": ["twitter", "instagram", "facebook"],
+        "samples": [
+            {
+                "content": (
+                    "okay but can we talk about how nobody warns you that adulting is just "
+                    "googling how to do stuff and hoping for the best?? like I just spent "
+                    "20 minutes trying to figure out if I need to wash rice and honestly "
+                    "I still don't know the answer"
+                ),
+                "content_type": "text/plain",
+                "source_type": "paste",
+                "word_count": 48,
+                "length_category": "short",
+            },
+            {
+                "content": (
+                    "hot take: the best productivity hack is closing all 47 of your browser "
+                    "tabs and starting fresh. yes it's terrifying. yes you will lose that "
+                    "article you were 'definitely going to read later.' but you'll feel like "
+                    "a new person and that's worth more than any bookmark folder"
+                ),
+                "content_type": "text/plain",
+                "source_type": "paste",
+                "word_count": 52,
+                "length_category": "short",
+            },
+            {
+                "content": (
+                    "just realized I've been saying 'I should really start meal prepping' "
+                    "every Sunday for three years straight. at this point it's not a goal "
+                    "it's a catchphrase. someone put it on my tombstone"
+                ),
+                "content_type": "text/plain",
+                "source_type": "paste",
+                "word_count": 38,
+                "length_category": "short",
+            },
+            {
+                "content": (
+                    "the thing about social media is everyone's out here curating their "
+                    "best life while I'm just trying to remember if I already told this "
+                    "story to you or if I told it to someone else and now I'm just gonna "
+                    "tell it again because honestly it's a good story and you should hear "
+                    "it twice"
+                ),
+                "content_type": "text/plain",
+                "source_type": "paste",
+                "word_count": 55,
+                "length_category": "short",
+            },
+            {
+                "content": (
+                    "normalize admitting you have no idea what you're doing. I started a "
+                    "podcast last month and my setup is literally my phone propped against "
+                    "a cereal box. it sounds terrible. people love it. turns out authenticity "
+                    "beats production quality every single time"
+                ),
+                "content_type": "text/plain",
+                "source_type": "paste",
+                "word_count": 45,
+                "length_category": "short",
+            },
+        ],
+        "dna": {
+            "vocabulary": {
+                "complexity_level": "simple",
+                "jargon_usage": "none",
+                "contraction_frequency": "always",
+                "word_choice_patterns": "colloquial, internet-native, conversational",
+            },
+            "sentence_structure": {
+                "average_length": "varied",
+                "complexity_variation": "moderate",
+                "fragment_usage": "frequent",
+                "patterns": "stream of consciousness, run-on sentences for comedic effect",
+            },
+            "paragraph_structure": {
+                "average_length": "short",
+                "transition_style": "abrupt",
+                "organization": "stream-of-consciousness",
+            },
+            "tone": {
+                "formality_level": "very informal",
+                "warmth": "enthusiastic",
+                "primary_tone": "conversational",
+                "secondary_tone": "self-deprecating",
+            },
+            "rhetorical_devices": {
+                "metaphor_usage": "rare",
+                "repetition_patterns": "none",
+                "rhetorical_questions": "frequent",
+                "storytelling_tendency": "anecdotal",
+            },
+            "punctuation": {
+                "em_dash_frequency": "never",
+                "semicolon_usage": "never",
+                "exclamation_points": "never",
+                "parenthetical_asides": "never",
+                "ellipsis_usage": "never",
+            },
+            "openings_and_closings": {
+                "opening_patterns": "lowercase conversational hook",
+                "hook_style": "conversational",
+                "closing_patterns": "punchline or trailing thought",
+                "cta_style": "none",
+            },
+            "humor": {
+                "frequency": "frequent",
+                "types": "self-deprecating, absurdist, observational",
+                "placement": "throughout",
+            },
+            "signatures": {
+                "catchphrases": ["okay but", "hot take", "normalize"],
+                "recurring_themes": [
+                    "everyday struggles",
+                    "internet culture",
+                    "authenticity",
+                ],
+                "unique_mannerisms": ("lowercase everything, no periods, double question marks"),
+            },
+        },
+        "prominence_scores": {
+            "vocabulary": 85,
+            "sentence_structure": 82,
+            "paragraph_structure": 80,
+            "tone": 95,
+            "rhetorical_devices": 80,
+            "punctuation": 88,
+            "openings_and_closings": 83,
+            "humor": 95,
+            "signatures": 92,
+        },
+    },
+    {
+        "name": "Technical Writer",
+        "description": "A precise, structured voice for documentation and technical content.",
+        "tags": ["blog", "email", "newsletter"],
+        "samples": [
+            {
+                "content": (
+                    "Database indexing is one of those topics that every developer encounters "
+                    "but few take the time to understand properly. At its core, an index is a "
+                    "data structure that trades write performance for read performance. When "
+                    "you create an index on a column, the database maintains a separate, sorted "
+                    "structure that allows it to locate rows without scanning the entire table. "
+                    "The cost is additional storage and slower inserts, because the index must "
+                    "be updated alongside the data."
+                ),
+                "content_type": "text/plain",
+                "source_type": "paste",
+                "word_count": 78,
+                "length_category": "short",
+            },
+            {
+                "content": (
+                    "The distinction between authentication and authorization is fundamental "
+                    "yet frequently confused. Authentication answers the question 'Who are you?' "
+                    "while authorization answers 'What are you allowed to do?' A system can "
+                    "authenticate a user correctly and still deny access if the authorization "
+                    "policy doesn't grant the required permissions. Conflating these two "
+                    "concepts leads to security architectures that are difficult to reason "
+                    "about and harder to audit."
+                ),
+                "content_type": "text/plain",
+                "source_type": "paste",
+                "word_count": 67,
+                "length_category": "short",
+            },
+            {
+                "content": (
+                    "Effective error handling follows a simple principle: handle errors at the "
+                    "level where you have enough context to do something meaningful about them. "
+                    "Catching an exception just to log it and re-raise adds noise without value. "
+                    "Catching it to provide a user-friendly message or retry with different "
+                    "parameters adds value. The goal is not to prevent all errors from "
+                    "propagating — it is to ensure that each error is handled exactly once, "
+                    "at the right layer."
+                ),
+                "content_type": "text/plain",
+                "source_type": "paste",
+                "word_count": 73,
+                "length_category": "short",
+            },
+        ],
+        "dna": {
+            "vocabulary": {
+                "complexity_level": "advanced",
+                "jargon_usage": "heavy",
+                "contraction_frequency": "rare",
+                "word_choice_patterns": "precise technical terms, Latinate vocabulary",
+            },
+            "sentence_structure": {
+                "average_length": "long",
+                "complexity_variation": "low",
+                "fragment_usage": "never",
+                "patterns": "complex and compound-complex, subordinate clauses",
+            },
+            "paragraph_structure": {
+                "average_length": "medium",
+                "transition_style": "logical connectors",
+                "organization": "hierarchical",
+            },
+            "tone": {
+                "formality_level": "formal",
+                "warmth": "neutral",
+                "primary_tone": "authoritative",
+                "secondary_tone": "instructional",
+            },
+            "rhetorical_devices": {
+                "metaphor_usage": "rare",
+                "repetition_patterns": "none",
+                "rhetorical_questions": "never",
+                "storytelling_tendency": "none",
+            },
+            "punctuation": {
+                "em_dash_frequency": "moderate",
+                "semicolon_usage": "moderate",
+                "exclamation_points": "never",
+                "parenthetical_asides": "rare",
+                "ellipsis_usage": "never",
+            },
+            "openings_and_closings": {
+                "opening_patterns": "definitional statement or problem framing",
+                "hook_style": "informational",
+                "closing_patterns": "summary or guiding principle",
+                "cta_style": "none",
+            },
+            "humor": {
+                "frequency": "none",
+                "types": "none",
+                "placement": "none",
+            },
+            "signatures": {
+                "catchphrases": ["At its core", "The distinction between"],
+                "recurring_themes": ["correctness", "clarity", "precision"],
+                "unique_mannerisms": "uses semicolons to connect related clauses",
+            },
+        },
+        "prominence_scores": {
+            "vocabulary": 92,
+            "sentence_structure": 88,
+            "paragraph_structure": 85,
+            "tone": 90,
+            "rhetorical_devices": 80,
+            "punctuation": 86,
+            "openings_and_closings": 84,
+            "humor": 80,
+            "signatures": 82,
+        },
+    },
+]
+
+DEMO_CLONE_NAMES = {clone["name"] for clone in DEMO_CLONES}
+
+
+async def seed_demo_clones(session: AsyncSession) -> None:
+    """Seed 3 demo voice clones with writing samples and pre-analyzed Voice DNA.
+
+    This is idempotent — calling it multiple times will not duplicate clones.
+    """
+    for clone_data in DEMO_CLONES:
+        stmt = select(VoiceClone).where(
+            VoiceClone.name == clone_data["name"],
+            VoiceClone.is_demo.is_(True),
+        )
+        result = await session.execute(stmt)
+        if result.scalar_one_or_none() is not None:
+            continue
+
+        clone = VoiceClone(
+            name=clone_data["name"],
+            description=clone_data["description"],
+            tags=clone_data["tags"],
+            is_demo=True,
+        )
+        session.add(clone)
+        await session.flush()
+
+        for sample_data in clone_data["samples"]:
+            sample = WritingSample(
+                clone_id=clone.id,
+                content=sample_data["content"],
+                content_type=sample_data["content_type"],
+                source_type=sample_data["source_type"],
+                word_count=sample_data["word_count"],
+                length_category=sample_data["length_category"],
+            )
+            session.add(sample)
+
+        dna = VoiceDNAVersion(
+            clone_id=clone.id,
+            version_number=1,
+            data=clone_data["dna"],
+            prominence_scores=clone_data["prominence_scores"],
+            trigger="seed",
+            model_used="pre-analyzed",
+        )
+        session.add(dna)
 
     await session.flush()
