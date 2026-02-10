@@ -20,7 +20,7 @@ describe('CloneHeader', () => {
     const clone = buildClone({ confidence_score: 75 });
     renderWithProviders(<CloneHeader clone={clone} onUpdate={vi.fn()} onDelete={vi.fn()} />);
 
-    expect(screen.getByText('75% confidence')).toBeInTheDocument();
+    expect(screen.getByText('75% — Needs improvement')).toBeInTheDocument();
   });
 
   it('enters edit mode on name click and saves on Enter', async () => {
