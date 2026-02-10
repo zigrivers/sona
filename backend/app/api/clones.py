@@ -1,14 +1,18 @@
-"""Clone CRUD API routes."""
+"""Clone CRUD and DNA analysis API routes."""
 
 from typing import Annotated, cast
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_session
+from app.api.deps import get_llm_provider, get_session
+from app.exceptions import AnalysisFailedError, CloneNotFoundError
 from app.models.clone import VoiceClone
 from app.schemas.clone import CloneCreate, CloneListResponse, CloneResponse, CloneUpdate
+from app.schemas.dna import DNAResponse, DNAVersionListResponse, DNAVersionResponse
 from app.services.clone_service import CloneService
+from app.services.dna_service import DNAService
 
 router = APIRouter(prefix="/clones", tags=["clones"])
 
@@ -80,3 +84,48 @@ async def delete_clone(clone_id: str, session: Session) -> Response:
     await service.delete(clone_id)
     await session.commit()
     return Response(status_code=204)
+
+
+# ── DNA Analysis Endpoints ─────────────────────────────────────
+
+
+class AnalyzeRequest(BaseModel):
+    model: str = Field(min_length=1)
+
+
+@router.post("/{clone_id}/analyze", status_code=201)
+async def analyze_clone(
+    clone_id: str,
+    data: AnalyzeRequest,
+    session: Session,
+) -> DNAResponse:
+    provider = await get_llm_provider()
+    svc = DNAService(session)
+    try:
+        dna = await svc.analyze(clone_id, provider, model=data.model)
+    except CloneNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=exc.detail) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except AnalysisFailedError as exc:
+        raise HTTPException(status_code=502, detail=exc.detail) from exc
+    await session.commit()
+    return DNAResponse.model_validate(dna, from_attributes=True)
+
+
+@router.get("/{clone_id}/dna")
+async def get_dna(clone_id: str, session: Session) -> DNAResponse:
+    svc = DNAService(session)
+    dna = await svc.get_current(clone_id)
+    if dna is None:
+        raise HTTPException(status_code=404, detail="No DNA found for this clone")
+    return DNAResponse.model_validate(dna, from_attributes=True)
+
+
+@router.get("/{clone_id}/dna/versions")
+async def list_dna_versions(clone_id: str, session: Session) -> DNAVersionListResponse:
+    svc = DNAService(session)
+    versions = await svc.list_versions(clone_id)
+    return DNAVersionListResponse(
+        items=[DNAVersionResponse.model_validate(v, from_attributes=True) for v in versions],
+    )
