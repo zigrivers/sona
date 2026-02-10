@@ -36,7 +36,12 @@ bd sync               # Sync with git
    gh pr view --json state -q .state      # Must show "MERGED"
    ```
 6. **Close task and sync**: `bd close <id>` then `bd sync` — only AFTER merge is confirmed
-7. **Clean up** - Return to home branch (`git checkout agent-N-home`), delete feature branch, `git fetch origin`
+7. **Clean up** — these steps are MANDATORY:
+   ```bash
+   git checkout agent-N-home                # Worktree: park on home branch
+   git branch -d bd-<task-id>/<short-desc>  # Delete local feature branch
+   git fetch origin                         # Get latest main for next task
+   ```
 8. **Verify** - No uncommitted changes, no unpushed feature branches
 9. **Hand off** - Provide context for next session
 

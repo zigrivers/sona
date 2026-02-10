@@ -79,11 +79,12 @@ bd ready                                    # Check for more unblocked tasks
 ```bash
 bd close <id>               # or bd update <id> --status in_progress if not done
 bd sync
+# Clean up — these steps are MANDATORY, not optional
+git checkout agent-N-home                   # Worktree: park on home branch (Main repo: git checkout main && git pull --rebase origin main)
+git branch -d bd-<task-id>/<short-desc>     # Delete local feature branch
+git fetch origin                            # Get latest main
 ```
-**Main repo**: `git checkout main && git pull --rebase origin main` (update local only — never push to main)
-**Worktree**: `git checkout agent-N-home` (park on home branch)
-
-Confirm: no uncommitted changes, no unpushed feature branches.
+Confirm: no uncommitted changes, no unpushed feature branches, no stale local branches.
 
 ## Git Rules
 
