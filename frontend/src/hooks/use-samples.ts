@@ -14,8 +14,34 @@ export function useSamples(cloneId: string) {
 export function useCreateSample(cloneId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: { content: string; content_type: string; source_type: string }) =>
-      api.post<SampleResponse>(`/api/clones/${cloneId}/samples`, body),
+    mutationFn: (body: {
+      content: string;
+      content_type: string;
+      source_type: string;
+      source_filename?: string;
+    }) => api.post<SampleResponse>(`/api/clones/${cloneId}/samples`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.samples.list(cloneId) });
+    },
+  });
+}
+
+export function useUploadSample(cloneId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: FormData) =>
+      api.upload<SampleResponse>(`/api/clones/${cloneId}/samples/upload`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.samples.list(cloneId) });
+    },
+  });
+}
+
+export function useScrapeSample(cloneId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { url: string; content_type: string }) =>
+      api.post<SampleResponse>(`/api/clones/${cloneId}/samples/url`, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.samples.list(cloneId) });
     },

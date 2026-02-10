@@ -20,22 +20,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useCreateSample, useDeleteSample, useSamples } from '@/hooks/use-samples';
+import { useDeleteSample, useSamples } from '@/hooks/use-samples';
 import type { SampleResponse } from '@/types/api';
 
 import { AddSampleDialog } from './AddSampleDialog';
-
-const CONTENT_TYPE_LABELS: Record<string, string> = {
-  tweet: 'Tweet',
-  thread: 'Thread',
-  linkedin_post: 'LinkedIn Post',
-  blog_post: 'Blog Post',
-  article: 'Article',
-  email: 'Email',
-  newsletter: 'Newsletter',
-  essay: 'Essay',
-  other: 'Other',
-};
+import { CONTENT_TYPE_LABELS } from './constants';
 
 function formatContentType(type: string): string {
   return CONTENT_TYPE_LABELS[type] ?? type;
@@ -51,19 +40,12 @@ interface SampleListProps {
 
 export function SampleList({ cloneId }: SampleListProps) {
   const { data } = useSamples(cloneId);
-  const createMutation = useCreateSample(cloneId);
   const deleteMutation = useDeleteSample(cloneId);
 
   const [addOpen, setAddOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SampleResponse | null>(null);
 
   const samples = data?.items ?? [];
-
-  function handleCreate(body: { content: string; content_type: string; source_type: string }) {
-    createMutation.mutate(body, {
-      onSuccess: () => setAddOpen(false),
-    });
-  }
 
   function handleConfirmDelete() {
     if (!deleteTarget) return;
@@ -82,12 +64,7 @@ export function SampleList({ cloneId }: SampleListProps) {
         >
           <Button onClick={() => setAddOpen(true)}>Add Sample</Button>
         </EmptyState>
-        <AddSampleDialog
-          open={addOpen}
-          onOpenChange={setAddOpen}
-          onSubmit={handleCreate}
-          isPending={createMutation.isPending}
-        />
+        <AddSampleDialog open={addOpen} onOpenChange={setAddOpen} cloneId={cloneId} />
       </>
     );
   }
@@ -139,12 +116,7 @@ export function SampleList({ cloneId }: SampleListProps) {
         </TableBody>
       </Table>
 
-      <AddSampleDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        onSubmit={handleCreate}
-        isPending={createMutation.isPending}
-      />
+      <AddSampleDialog open={addOpen} onOpenChange={setAddOpen} cloneId={cloneId} />
 
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent>

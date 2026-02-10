@@ -28,6 +28,27 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function requestFormData<T>(url: string, body: FormData): Promise<T> {
+  const response = await fetch(url, { method: 'POST', body });
+
+  if (!response.ok) {
+    let detail = 'Request failed';
+    let code = 'UNKNOWN_ERROR';
+
+    try {
+      const errorBody = await response.json();
+      detail = errorBody.detail ?? detail;
+      code = errorBody.code ?? code;
+    } catch {
+      // response body is not JSON — keep defaults
+    }
+
+    throw new ApiError(response.status, detail, code);
+  }
+
+  return response.json() as Promise<T>;
+}
+
 export const api = {
   get<T>(url: string): Promise<T> {
     return request<T>(url, { method: 'GET' });
@@ -49,5 +70,9 @@ export const api = {
 
   delete(url: string): Promise<void> {
     return request<void>(url, { method: 'DELETE' });
+  },
+
+  upload<T>(url: string, body: FormData): Promise<T> {
+    return requestFormData<T>(url, body);
   },
 };
