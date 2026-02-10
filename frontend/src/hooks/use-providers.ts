@@ -33,6 +33,12 @@ export function useTestConnection() {
   });
 }
 
+export function useHasProvider() {
+  const { data: providers, isLoading } = useProviders();
+  const hasProvider = providers?.some((p) => p.is_configured) ?? false;
+  return { hasProvider, isLoading };
+}
+
 export function useSetDefaultProvider() {
   const queryClient = useQueryClient();
   return useMutation({
