@@ -198,3 +198,148 @@ class TestStreamEndpoint:
         body = response.text
         assert "Hello " in body
         assert "streaming." in body
+
+
+async def _generate_one(
+    client: AsyncClient, session: AsyncSession, mock_provider: AsyncMock
+) -> dict[str, Any]:
+    """Generate a single content item and return its JSON dict."""
+    clone = await _create_clone_with_dna(session)
+    mock_provider.complete = AsyncMock(return_value="Generated content here.")
+    response = await client.post(
+        "/api/content/generate",
+        json={
+            "clone_id": clone.id,
+            "platforms": ["blog"],
+            "input_text": "Write about testing.",
+        },
+    )
+    assert response.status_code == 201
+    return response.json()["items"][0]
+
+
+class TestContentCRUDEndpoints:
+    async def test_get_content_200(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """GET /api/content/{id} should return the content."""
+        item = await _generate_one(client, session, mock_provider)
+
+        response = await client.get(f"/api/content/{item['id']}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == item["id"]
+        assert data["content_current"] == "Generated content here."
+
+    async def test_get_content_404(self, client: AsyncClient) -> None:
+        """GET /api/content/{id} for missing content should return 404."""
+        response = await client.get("/api/content/nonexistent-id")
+        assert response.status_code == 404
+
+    async def test_update_content_200(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """PUT /api/content/{id} with content_current should update and return 200."""
+        item = await _generate_one(client, session, mock_provider)
+
+        response = await client.put(
+            f"/api/content/{item['id']}",
+            json={"content_current": "Updated text."},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["content_current"] == "Updated text."
+        assert data["word_count"] == 2
+
+    async def test_update_status_200(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """PUT /api/content/{id} with status should update status."""
+        item = await _generate_one(client, session, mock_provider)
+
+        response = await client.put(
+            f"/api/content/{item['id']}",
+            json={"status": "review"},
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "review"
+
+    async def test_delete_content_204(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """DELETE /api/content/{id} should return 204."""
+        item = await _generate_one(client, session, mock_provider)
+
+        response = await client.delete(f"/api/content/{item['id']}")
+        assert response.status_code == 204
+
+        # Verify gone
+        response = await client.get(f"/api/content/{item['id']}")
+        assert response.status_code == 404
+
+    async def test_delete_content_404(self, client: AsyncClient) -> None:
+        """DELETE /api/content/{id} for missing content should return 404."""
+        response = await client.delete("/api/content/nonexistent-id")
+        assert response.status_code == 404
+
+
+class TestContentVersionEndpoints:
+    async def test_list_versions_200(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """GET /api/content/{id}/versions should return version list."""
+        item = await _generate_one(client, session, mock_provider)
+
+        response = await client.get(f"/api/content/{item['id']}/versions")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) >= 1
+        assert data["items"][0]["trigger"] == "generation"
+
+    async def test_restore_version_200(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """POST /api/content/{id}/restore/{version} should restore and return 200."""
+        item = await _generate_one(client, session, mock_provider)
+
+        # Edit first
+        await client.put(
+            f"/api/content/{item['id']}",
+            json={"content_current": "Edited text."},
+        )
+
+        # Restore to version 1
+        response = await client.post(f"/api/content/{item['id']}/restore/1")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["content_current"] == "Generated content here."
+
+    async def test_restore_nonexistent_version_400(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """POST /api/content/{id}/restore/{version} with bad version should return 400."""
+        item = await _generate_one(client, session, mock_provider)
+
+        response = await client.post(f"/api/content/{item['id']}/restore/999")
+        assert response.status_code == 400
