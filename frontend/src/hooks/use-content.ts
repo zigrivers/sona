@@ -1,8 +1,26 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/query-keys';
-import type { ContentResponse } from '@/types/api';
+import type { ContentListResponse, ContentResponse } from '@/types/api';
+
+interface ContentListParams {
+  sort?: string;
+  order?: string;
+}
+
+export function useContentList(params: ContentListParams = {}) {
+  const searchParams = new URLSearchParams();
+  if (params.sort) searchParams.set('sort', params.sort);
+  if (params.order) searchParams.set('order', params.order);
+  const qs = searchParams.toString();
+  const url = qs ? `/api/content?${qs}` : '/api/content';
+
+  return useQuery({
+    queryKey: queryKeys.content.list(params),
+    queryFn: () => api.get<ContentListResponse>(url),
+  });
+}
 
 interface GenerateContentRequest {
   clone_id: string;
