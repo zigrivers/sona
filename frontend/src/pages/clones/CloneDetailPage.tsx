@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { CloneHeader } from '@/components/clones/CloneHeader';
+import { SampleList } from '@/components/samples/SampleList';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useClone, useDeleteClone, useUpdateClone } from '@/hooks/use-clones';
@@ -54,9 +55,7 @@ export function CloneDetailPage() {
         </TabsList>
 
         <TabsContent value="samples">
-          <p className="text-muted-foreground py-8 text-center">
-            Writing samples will appear here once added.
-          </p>
+          <SampleList cloneId={id!} />
         </TabsContent>
 
         <TabsContent value="voice-dna">

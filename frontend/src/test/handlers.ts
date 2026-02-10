@@ -5,6 +5,7 @@ import { contentHandlers } from './handlers/content';
 import { dataHandlers } from './handlers/data';
 import { methodologyHandlers } from './handlers/methodology';
 import { providerHandlers } from './handlers/providers';
+import { sampleHandlers } from './handlers/samples';
 
 export const handlers = [
   ...cloneHandlers,
@@ -12,6 +13,7 @@ export const handlers = [
   ...dataHandlers,
   ...providerHandlers,
   ...methodologyHandlers,
+  ...sampleHandlers,
 ];
 
 export const server = setupServer(...handlers);
