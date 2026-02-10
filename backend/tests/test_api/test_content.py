@@ -640,3 +640,127 @@ class TestScoreEndpoint:
         response = await client.post(f"/api/content/{content.id}/score")
         assert response.status_code == 400
         assert "DNA" in response.json()["detail"]
+
+
+class TestFeedbackRegenEndpoint:
+    async def test_feedback_regen_200(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """POST /api/content/{id}/feedback-regen should return 200 with updated content."""
+        item = await _generate_one(client, session, mock_provider)
+        mock_provider.complete = AsyncMock(return_value="Improved with feedback.")
+
+        response = await client.post(
+            f"/api/content/{item['id']}/feedback-regen",
+            json={"feedback": "Make it shorter."},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["content_current"] == "Improved with feedback."
+        assert data["content_original"] == item["content_original"]
+
+    async def test_feedback_regen_404_missing_content(self, client: AsyncClient) -> None:
+        """POST /api/content/{id}/feedback-regen for missing content should return 404."""
+        response = await client.post(
+            "/api/content/nonexistent-id/feedback-regen",
+            json={"feedback": "Any feedback."},
+        )
+        assert response.status_code == 404
+
+    async def test_feedback_regen_400_no_dna(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+    ) -> None:
+        """POST /api/content/{id}/feedback-regen without DNA should return 400."""
+        clone = VoiceClone(id=nanoid.generate(), name="No DNA")
+        session.add(clone)
+        await session.flush()
+
+        content = Content(
+            clone_id=clone.id,
+            platform="blog",
+            status="draft",
+            content_current="Some content.",
+            content_original="Some content.",
+            input_text="Write.",
+            word_count=2,
+            char_count=13,
+        )
+        session.add(content)
+        await session.commit()
+
+        response = await client.post(
+            f"/api/content/{content.id}/feedback-regen",
+            json={"feedback": "Improve."},
+        )
+        assert response.status_code == 400
+
+    async def test_feedback_regen_422_empty_feedback(self, client: AsyncClient) -> None:
+        """POST /api/content/{id}/feedback-regen with empty feedback should return 422."""
+        response = await client.post(
+            "/api/content/any-id/feedback-regen",
+            json={"feedback": ""},
+        )
+        assert response.status_code == 422
+
+
+class TestPartialRegenEndpoint:
+    async def test_partial_regen_200(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """POST /api/content/{id}/partial-regen should return 200 with updated content."""
+        item = await _generate_one(client, session, mock_provider)
+        mock_provider.complete = AsyncMock(return_value="replaced")
+
+        response = await client.post(
+            f"/api/content/{item['id']}/partial-regen",
+            json={"selection_start": 0, "selection_end": 9},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # "Generated" (0-9) replaced with "replaced"
+        assert data["content_current"].startswith("replaced")
+
+    async def test_partial_regen_400_invalid_range(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """POST /api/content/{id}/partial-regen with out-of-bounds range should return 400."""
+        item = await _generate_one(client, session, mock_provider)
+
+        response = await client.post(
+            f"/api/content/{item['id']}/partial-regen",
+            json={"selection_start": 0, "selection_end": 9999},
+        )
+        assert response.status_code == 400
+
+    async def test_partial_regen_with_feedback(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """POST /api/content/{id}/partial-regen with feedback should pass it through."""
+        item = await _generate_one(client, session, mock_provider)
+        mock_provider.complete = AsyncMock(return_value="x")
+
+        response = await client.post(
+            f"/api/content/{item['id']}/partial-regen",
+            json={
+                "selection_start": 0,
+                "selection_end": 1,
+                "feedback": "Make it formal.",
+            },
+        )
+        assert response.status_code == 200

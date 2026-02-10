@@ -99,5 +99,15 @@ class BulkTagRequest(BaseModel):
     tags: list[str] = Field(min_length=1)
 
 
+class FeedbackRegenRequest(BaseModel):
+    feedback: str = Field(min_length=1, max_length=1000)
+
+
+class PartialRegenRequest(BaseModel):
+    selection_start: int = Field(ge=0)
+    selection_end: int = Field(ge=1)
+    feedback: str | None = None
+
+
 class BulkResponse(BaseModel):
     count: int

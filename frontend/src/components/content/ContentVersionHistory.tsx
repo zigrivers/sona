@@ -16,7 +16,8 @@ const TRIGGER_LABELS: Record<
   generation: { label: 'Generated', variant: 'default' },
   inline_edit: { label: 'Edited', variant: 'secondary' },
   regeneration: { label: 'Regenerated', variant: 'secondary' },
-  feedback_driven: { label: 'Feedback', variant: 'outline' },
+  feedback_regen: { label: 'Feedback', variant: 'outline' },
+  partial_regen: { label: 'Partial', variant: 'outline' },
   restore: { label: 'Restored', variant: 'outline' },
 };
 
