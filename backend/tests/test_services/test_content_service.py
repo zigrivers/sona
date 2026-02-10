@@ -463,9 +463,8 @@ class TestListContent:
         await _create_content_item(session, clone.id, content_text="Second")
         await _create_content_item(session, clone.id, content_text="Third")
 
-        mock_provider = AsyncMock()
-        service = ContentService(session, mock_provider)
-        items, total = await service.list_content()
+        service = ContentService(session)
+        items, total = await service.list()
 
         assert total == 3
         assert len(items) == 3
@@ -476,9 +475,8 @@ class TestListContent:
         for i in range(5):
             await _create_content_item(session, clone.id, content_text=f"Item {i}")
 
-        mock_provider = AsyncMock()
-        service = ContentService(session, mock_provider)
-        items, total = await service.list_content(offset=2, limit=2)
+        service = ContentService(session)
+        items, total = await service.list(offset=2, limit=2)
 
         assert total == 5
         assert len(items) == 2
@@ -492,9 +490,8 @@ class TestListContent:
         await _create_content_item(session, clone_a.id, content_text="Clone A content")
         await _create_content_item(session, clone_b.id, content_text="Clone B content")
 
-        mock_provider = AsyncMock()
-        service = ContentService(session, mock_provider)
-        items, total = await service.list_content(clone_id=clone_a.id)
+        service = ContentService(session)
+        items, total = await service.list(clone_id=clone_a.id)
 
         assert total == 1
         assert items[0].clone_id == clone_a.id
@@ -505,9 +502,8 @@ class TestListContent:
         await _create_content_item(session, clone.id, platform="linkedin")
         await _create_content_item(session, clone.id, platform="twitter")
 
-        mock_provider = AsyncMock()
-        service = ContentService(session, mock_provider)
-        items, total = await service.list_content(platform="linkedin")
+        service = ContentService(session)
+        items, total = await service.list(platform="linkedin")
 
         assert total == 1
         assert items[0].platform == "linkedin"
@@ -519,9 +515,8 @@ class TestListContent:
         await _create_content_item(session, clone.id, status="review")
         await _create_content_item(session, clone.id, status="published")
 
-        mock_provider = AsyncMock()
-        service = ContentService(session, mock_provider)
-        items, total = await service.list_content(status="draft")
+        service = ContentService(session)
+        items, total = await service.list(status="draft")
 
         assert total == 1
         assert items[0].status == "draft"
@@ -532,9 +527,8 @@ class TestListContent:
         await _create_content_item(session, clone.id, content_text="Machine learning is great")
         await _create_content_item(session, clone.id, content_text="Cooking tips for beginners")
 
-        mock_provider = AsyncMock()
-        service = ContentService(session, mock_provider)
-        items, total = await service.list_content(search="machine")
+        service = ContentService(session)
+        items, total = await service.list(search="machine")
 
         assert total == 1
         assert "machine" in items[0].content_current.lower()
@@ -546,9 +540,8 @@ class TestListContent:
         await _create_content_item(session, clone.id, authenticity_score=90)
         await _create_content_item(session, clone.id, authenticity_score=75)
 
-        mock_provider = AsyncMock()
-        service = ContentService(session, mock_provider)
-        items, total = await service.list_content(sort="authenticity_score", order="desc")
+        service = ContentService(session)
+        items, total = await service.list(sort="authenticity_score", order="desc")
 
         assert total == 3
         assert items[0].authenticity_score == 90
@@ -562,9 +555,8 @@ class TestListContent:
         await _create_content_item(session, clone.id, platform="linkedin", status="published")
         await _create_content_item(session, clone.id, platform="twitter", status="draft")
 
-        mock_provider = AsyncMock()
-        service = ContentService(session, mock_provider)
-        items, total = await service.list_content(platform="linkedin", status="draft")
+        service = ContentService(session)
+        items, total = await service.list(platform="linkedin", status="draft")
 
         assert total == 1
         assert items[0].platform == "linkedin"
@@ -579,8 +571,7 @@ class TestBulkOperations:
         c2 = await _create_content_item(session, clone.id, status="draft")
         await _create_content_item(session, clone.id, status="draft")  # not updated
 
-        mock_provider = AsyncMock()
-        service = ContentService(session, mock_provider)
+        service = ContentService(session)
         count = await service.bulk_update_status([c1.id, c2.id], "review")
 
         assert count == 2
@@ -596,8 +587,7 @@ class TestBulkOperations:
         c2 = await _create_content_item(session, clone.id)
         c3 = await _create_content_item(session, clone.id)
 
-        mock_provider = AsyncMock()
-        service = ContentService(session, mock_provider)
+        service = ContentService(session)
         count = await service.bulk_delete([c1.id, c2.id])
 
         assert count == 2
@@ -614,8 +604,7 @@ class TestBulkOperations:
         c1 = await _create_content_item(session, clone.id, tags=["existing"])
         c2 = await _create_content_item(session, clone.id, tags=[])
 
-        mock_provider = AsyncMock()
-        service = ContentService(session, mock_provider)
+        service = ContentService(session)
         count = await service.bulk_add_tags([c1.id, c2.id], ["new-tag", "another"])
 
         assert count == 2

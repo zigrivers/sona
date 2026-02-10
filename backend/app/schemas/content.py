@@ -83,3 +83,21 @@ class GenerateRequest(BaseModel):
     input_text: str = Field(min_length=1)
     generation_properties: dict[str, Any] | None = None
     preset_id: str | None = None
+
+
+class BulkStatusRequest(BaseModel):
+    ids: list[str] = Field(min_length=1)
+    status: str
+
+
+class BulkDeleteRequest(BaseModel):
+    ids: list[str] = Field(min_length=1)
+
+
+class BulkTagRequest(BaseModel):
+    ids: list[str] = Field(min_length=1)
+    tags: list[str] = Field(min_length=1)
+
+
+class BulkResponse(BaseModel):
+    count: int
