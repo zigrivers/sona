@@ -191,4 +191,50 @@ export const contentHandlers = [
       { status: 201 }
     );
   }),
+
+  http.post('/api/content/generate/variants', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json({
+      platform: (body.platform as string) ?? 'blog',
+      variants: [
+        {
+          variant_index: 0,
+          temperature: 0.5,
+          content_text: 'Conservative variant text.',
+          word_count: 3,
+          char_count: 25,
+        },
+        {
+          variant_index: 1,
+          temperature: 0.7,
+          content_text: 'Balanced variant text.',
+          word_count: 3,
+          char_count: 22,
+        },
+        {
+          variant_index: 2,
+          temperature: 0.9,
+          content_text: 'Creative variant text.',
+          word_count: 3,
+          char_count: 22,
+        },
+      ],
+      cost_multiplier: 3,
+    });
+  }),
+
+  http.post('/api/content/variants/select', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    return HttpResponse.json(
+      buildContentItem({
+        id: 'content-selected',
+        clone_id: (body.clone_id as string) ?? 'clone-1',
+        platform: (body.platform as string) ?? 'blog',
+        content_current: (body.content_text as string) ?? 'Selected variant.',
+        content_original: (body.content_text as string) ?? 'Selected variant.',
+        input_text: (body.input_text as string) ?? 'Write something.',
+      }),
+      { status: 201 }
+    );
+  }),
 ];

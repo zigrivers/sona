@@ -779,3 +779,200 @@ class TestPartialRegen:
         assert "AAA" in full_text
         assert "BBB" in full_text
         assert "CCC" in full_text
+
+
+class TestGenerateVariants:
+    async def test_returns_three_variants(self, session: AsyncSession) -> None:
+        """generate_variants should return exactly 3 variants."""
+        clone = await _create_clone_with_dna(session)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value="Variant text here.")
+
+        service = ContentService(session, mock_provider)
+        variants = await service.generate_variants(
+            clone_id=clone.id,
+            platform="blog",
+            input_text="Write about testing.",
+        )
+
+        assert len(variants) == 3
+
+    async def test_variants_have_different_temperatures(self, session: AsyncSession) -> None:
+        """generate_variants should call LLM with temperatures 0.5, 0.7, 0.9."""
+        clone = await _create_clone_with_dna(session)
+
+        captured_kwargs: list[dict[str, Any]] = []
+
+        async def capture_complete(messages: list[dict[str, str]], **kwargs: Any) -> str:
+            captured_kwargs.append(kwargs)
+            return "Variant text."
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(side_effect=capture_complete)
+
+        service = ContentService(session, mock_provider)
+        await service.generate_variants(
+            clone_id=clone.id,
+            platform="blog",
+            input_text="Write about testing.",
+        )
+
+        temps = sorted(kw["temperature"] for kw in captured_kwargs)
+        assert temps == [0.5, 0.7, 0.9]
+
+    async def test_variants_not_saved_to_database(self, session: AsyncSession) -> None:
+        """generate_variants should NOT create any Content records."""
+        clone = await _create_clone_with_dna(session)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value="Ephemeral text.")
+
+        service = ContentService(session, mock_provider)
+        await service.generate_variants(
+            clone_id=clone.id,
+            platform="blog",
+            input_text="Write about testing.",
+        )
+
+        from sqlalchemy import select as sa_select
+
+        from app.models.content import Content as ContentModel
+
+        result = await session.execute(sa_select(ContentModel))
+        assert list(result.scalars().all()) == []
+
+    async def test_variants_include_word_and_char_count(self, session: AsyncSession) -> None:
+        """Each variant should have correct word_count and char_count."""
+        clone = await _create_clone_with_dna(session)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value="Five words are right here.")
+
+        service = ContentService(session, mock_provider)
+        variants = await service.generate_variants(
+            clone_id=clone.id,
+            platform="blog",
+            input_text="Write about testing.",
+        )
+
+        for v in variants:
+            assert v["word_count"] == 5
+            assert v["char_count"] == len("Five words are right here.")
+
+    async def test_variants_error_without_provider(self, session: AsyncSession) -> None:
+        """generate_variants should raise ValueError when no provider is configured."""
+        clone = await _create_clone_with_dna(session)
+
+        service = ContentService(session, None)
+        with pytest.raises(ValueError, match=r"[Pp]rovider"):
+            await service.generate_variants(
+                clone_id=clone.id,
+                platform="blog",
+                input_text="Write about testing.",
+            )
+
+    async def test_variants_error_without_dna(self, session: AsyncSession) -> None:
+        """generate_variants should raise ValueError when clone has no DNA."""
+        clone = await _create_clone(session)
+
+        mock_provider = AsyncMock()
+        service = ContentService(session, mock_provider)
+        with pytest.raises(ValueError, match=r"[Dd]NA"):
+            await service.generate_variants(
+                clone_id=clone.id,
+                platform="blog",
+                input_text="Write about testing.",
+            )
+
+    async def test_variants_clone_not_found(self, session: AsyncSession) -> None:
+        """generate_variants should raise CloneNotFoundError for missing clone."""
+        mock_provider = AsyncMock()
+        service = ContentService(session, mock_provider)
+
+        with pytest.raises(CloneNotFoundError):
+            await service.generate_variants(
+                clone_id="nonexistent-id",
+                platform="blog",
+                input_text="Write about testing.",
+            )
+
+
+class TestSaveVariant:
+    async def test_save_creates_content_record(self, session: AsyncSession) -> None:
+        """save_variant should create a Content record with correct fields."""
+        clone = await _create_clone_with_dna(session)
+
+        service = ContentService(session)
+        content = await service.save_variant(
+            clone_id=clone.id,
+            platform="blog",
+            input_text="Write about testing.",
+            content_text="Selected variant text.",
+        )
+
+        assert content.clone_id == clone.id
+        assert content.platform == "blog"
+        assert content.input_text == "Write about testing."
+        assert content.content_current == "Selected variant text."
+        assert content.content_original == "Selected variant text."
+        assert content.status == "draft"
+
+    async def test_save_creates_initial_version(self, session: AsyncSession) -> None:
+        """save_variant should create a ContentVersion with trigger=variant_selection."""
+        clone = await _create_clone_with_dna(session)
+
+        service = ContentService(session)
+        content = await service.save_variant(
+            clone_id=clone.id,
+            platform="blog",
+            input_text="Write about testing.",
+            content_text="Selected variant text.",
+        )
+
+        versions = await service.list_versions(content.id)
+        assert len(versions) == 1
+        assert versions[0].trigger == "variant_selection"
+        assert versions[0].content_text == "Selected variant text."
+
+    async def test_save_has_correct_metrics(self, session: AsyncSession) -> None:
+        """save_variant should set correct word_count and char_count."""
+        clone = await _create_clone_with_dna(session)
+
+        service = ContentService(session)
+        content = await service.save_variant(
+            clone_id=clone.id,
+            platform="blog",
+            input_text="Write about testing.",
+            content_text="Five words are right here.",
+        )
+
+        assert content.word_count == 5
+        assert content.char_count == len("Five words are right here.")
+
+    async def test_save_clone_not_found(self, session: AsyncSession) -> None:
+        """save_variant should raise CloneNotFoundError for missing clone."""
+        service = ContentService(session)
+
+        with pytest.raises(CloneNotFoundError):
+            await service.save_variant(
+                clone_id="nonexistent-id",
+                platform="blog",
+                input_text="Write about testing.",
+                content_text="Some text.",
+            )
+
+    async def test_save_does_not_require_provider(self, session: AsyncSession) -> None:
+        """save_variant should work without a provider (no LLM call needed)."""
+        clone = await _create_clone_with_dna(session)
+
+        service = ContentService(session, None)
+        content = await service.save_variant(
+            clone_id=clone.id,
+            platform="blog",
+            input_text="Write about testing.",
+            content_text="Selected variant text.",
+        )
+
+        assert content.id is not None
+        assert content.content_current == "Selected variant text."

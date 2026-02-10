@@ -21,6 +21,8 @@ from app.models.dna import VoiceDNAVersion
 from app.models.methodology import MethodologySettings
 from app.schemas.content import ContentUpdate
 
+_VARIANT_TEMPERATURES = (0.5, 0.7, 0.9)
+
 _SORTABLE_COLUMNS = {
     "created_at": Content.created_at,
     "authenticity_score": Content.authenticity_score,
@@ -158,6 +160,94 @@ class ContentService:
             results.append(content)
 
         return results
+
+    # ── Variant A/B Comparison ─────────────────────────────────────
+
+    async def generate_variants(
+        self,
+        clone_id: str,
+        platform: str,
+        input_text: str,
+        properties: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Generate 3 content variants at different temperatures.
+
+        Returns ephemeral variants — nothing is saved to the database.
+
+        Raises:
+            CloneNotFoundError: If clone doesn't exist.
+            ValueError: If clone has no DNA or no provider configured.
+        """
+        if self._provider is None:
+            msg = "LLM provider required for content generation"
+            raise ValueError(msg)
+
+        await self._get_clone(clone_id)
+        dna = await self._get_latest_dna(clone_id)
+        methodology = await self._get_methodology()
+
+        raw_data = cast(dict[str, Any], dna.data)  # pyright: ignore[reportUnknownMemberType]
+        dna_data: dict[str, str] = {str(k): str(v) for k, v in raw_data.items()}
+
+        messages = self._build_messages(
+            platform=platform,
+            input_text=input_text,
+            dna_data=dna_data,
+            methodology=methodology,
+            properties=properties,
+        )
+
+        llm_tasks = [
+            self._provider.complete(messages, temperature=temp) for temp in _VARIANT_TEMPERATURES
+        ]
+        generated_texts: list[str] = await asyncio.gather(*llm_tasks)
+
+        return [
+            {
+                "variant_index": i,
+                "temperature": temp,
+                "content_text": text,
+                "word_count": len(text.split()),
+                "char_count": len(text),
+            }
+            for i, (temp, text) in enumerate(
+                zip(_VARIANT_TEMPERATURES, generated_texts, strict=True)
+            )
+        ]
+
+    async def save_variant(
+        self,
+        clone_id: str,
+        platform: str,
+        input_text: str,
+        content_text: str,
+        properties: dict[str, Any] | None = None,
+    ) -> Content:
+        """Save a selected variant as a Content record.
+
+        Creates Content + initial ContentVersion with trigger=variant_selection.
+        No LLM call needed.
+
+        Raises:
+            CloneNotFoundError: If clone doesn't exist.
+        """
+        await self._get_clone(clone_id)
+
+        content = Content(
+            clone_id=clone_id,
+            platform=platform,
+            status="draft",
+            content_current=content_text,
+            content_original=content_text,
+            input_text=input_text,
+            generation_properties=properties,
+            word_count=len(content_text.split()),
+            char_count=len(content_text),
+        )
+        self._session.add(content)
+        await self._session.flush()
+        await self._create_version(content, trigger="variant_selection")
+        return content
 
     # ── Import ────────────────────────────────────────────────────
 

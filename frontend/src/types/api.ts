@@ -194,6 +194,26 @@ export const ContentVersionListResponseSchema = z.object({
 
 export type ContentVersionListResponse = z.infer<typeof ContentVersionListResponseSchema>;
 
+// ── Variant A/B Comparison ─────────────────────────────────────────
+
+export const VariantItemSchema = z.object({
+  variant_index: z.number().int(),
+  temperature: z.number(),
+  content_text: z.string(),
+  word_count: z.number().int(),
+  char_count: z.number().int(),
+});
+
+export type VariantItem = z.infer<typeof VariantItemSchema>;
+
+export const GenerateVariantsResponseSchema = z.object({
+  platform: z.string(),
+  variants: z.array(VariantItemSchema),
+  cost_multiplier: z.number().int(),
+});
+
+export type GenerateVariantsResponse = z.infer<typeof GenerateVariantsResponseSchema>;
+
 // ── Scoring ────────────────────────────────────────────────────────
 
 export const DimensionScoreSchema = z.object({

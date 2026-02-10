@@ -7,6 +7,7 @@ import type {
   MethodologyVersionResponse,
   ProviderResponse,
   SampleResponse,
+  VariantItem,
 } from '@/types/api';
 
 let counter = 0;
@@ -126,6 +127,18 @@ export function buildMethodologyVersion(
     content: 'Version content.',
     trigger: 'manual_edit',
     created_at: NOW,
+    ...overrides,
+  };
+}
+
+export function buildVariant(overrides: Partial<VariantItem> = {}): VariantItem {
+  counter += 1;
+  return {
+    variant_index: 0,
+    temperature: 0.7,
+    content_text: `Variant content text ${counter}.`,
+    word_count: 4,
+    char_count: 24,
     ...overrides,
   };
 }
