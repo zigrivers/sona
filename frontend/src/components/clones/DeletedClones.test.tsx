@@ -1,11 +1,11 @@
-import { http, HttpResponse } from 'msw';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 
 import { buildClone } from '@/test/factories';
-import { renderWithProviders } from '@/test/render';
 import { server } from '@/test/handlers';
+import { renderWithProviders } from '@/test/render';
 
 import { DeletedClones } from './DeletedClones';
 

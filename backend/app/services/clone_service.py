@@ -86,9 +86,7 @@ class CloneService:
 
     async def restore(self, clone_id: str) -> VoiceClone:
         """Restore a soft-deleted clone."""
-        result = await self._session.execute(
-            select(VoiceClone).where(VoiceClone.id == clone_id)
-        )
+        result = await self._session.execute(select(VoiceClone).where(VoiceClone.id == clone_id))
         clone = result.scalar_one_or_none()
         if clone is None:
             raise CloneNotFoundError(clone_id)

@@ -198,9 +198,7 @@ async def test_list_deleted_returns_soft_deleted(
     assert data["items"][0]["name"] == "Deleted Clone"
 
 
-async def test_deleted_clone_excluded_from_list(
-    client: AsyncClient, session: AsyncSession
-) -> None:
+async def test_deleted_clone_excluded_from_list(client: AsyncClient, session: AsyncSession) -> None:
     """GET /api/clones should not include soft-deleted clones."""
     await _create_clone(session, name="Active")
     await _create_clone(session, name="Deleted", deleted_at=datetime.now(UTC))
