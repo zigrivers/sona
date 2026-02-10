@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 
-import { buildClone } from '@/test/factories';
+import { buildClone, buildSample } from '@/test/factories';
 import { server } from '@/test/handlers';
 import { renderWithProviders } from '@/test/render';
 
@@ -148,5 +148,45 @@ describe('CloneDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('clones-list')).toBeInTheDocument();
     });
+  });
+
+  it('shows empty sample state on samples tab', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Detail Clone')).toBeInTheDocument();
+    });
+
+    // Samples tab is active by default
+    await waitFor(() => {
+      expect(screen.getByText('No samples yet')).toBeInTheDocument();
+    });
+  });
+
+  it('shows sample list when samples exist', async () => {
+    server.use(
+      http.get('/api/clones/:cloneId/samples', () => {
+        return HttpResponse.json({
+          items: [
+            buildSample({ id: 's-1', content_type: 'blog_post', word_count: 200 }),
+            buildSample({ id: 's-2', content_type: 'tweet', word_count: 30 }),
+          ],
+          total: 2,
+        });
+      })
+    );
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Detail Clone')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Blog Post')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Tweet')).toBeInTheDocument();
+    expect(screen.getByText('200')).toBeInTheDocument();
+    expect(screen.getByText('30')).toBeInTheDocument();
   });
 });
