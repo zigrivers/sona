@@ -51,8 +51,7 @@ export const useGeneratorStore = create<GeneratorState>()(
           repurposeSourcePlatform: platform,
           lastUsedCloneId: cloneId,
         }),
-      clearRepurpose: () =>
-        set({ repurposeText: null, repurposeSourcePlatform: null }),
+      clearRepurpose: () => set({ repurposeText: null, repurposeSourcePlatform: null }),
     }),
     {
       name: 'sona-generator',

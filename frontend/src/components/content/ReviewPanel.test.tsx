@@ -238,13 +238,9 @@ describe('ReviewPanel', () => {
       })
     );
 
-    const emptyItems = [
-      buildContent({ id: 'c-empty', platform: 'linkedin', content_current: '' }),
-    ];
+    const emptyItems = [buildContent({ id: 'c-empty', platform: 'linkedin', content_current: '' })];
 
-    renderWithProviders(
-      <ReviewPanel items={emptyItems} generationParams={generationParams} />
-    );
+    renderWithProviders(<ReviewPanel items={emptyItems} generationParams={generationParams} />);
 
     await vi.advanceTimersByTimeAsync(2500);
 

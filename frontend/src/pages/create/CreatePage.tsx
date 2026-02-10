@@ -33,7 +33,7 @@ export function CreatePage() {
   const [properties, setProperties] = useState<GenerationProperties>(
     repurposeText
       ? { ...(lastUsedProperties ?? DEFAULT_PROPERTIES), platforms: [] }
-      : lastUsedProperties ?? DEFAULT_PROPERTIES
+      : (lastUsedProperties ?? DEFAULT_PROPERTIES)
   );
 
   useEffect(() => {
