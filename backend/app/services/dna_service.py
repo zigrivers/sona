@@ -75,6 +75,9 @@ class DNAService:
 
         dna_data = parsed.get("dna", parsed)
         prominence_scores = parsed.get("prominence_scores")
+        consistency_score = parsed.get("consistency_score")
+        if consistency_score is not None:
+            dna_data["consistency_score"] = consistency_score
 
         # Determine version number and trigger
         version_number = await self._next_version_number(clone_id)

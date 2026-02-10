@@ -18,6 +18,11 @@ def build_dna_analysis_prompt(
         "You are an expert linguist analyzing writing samples to extract a Voice DNA profile.",
         "Identify patterns in tone, vocabulary, sentence structure, rhythm, and stylistic quirks.",
         "Return a structured JSON object with the voice dimensions.",
+        (
+            "Also rate the overall voice consistency across all samples as a"
+            " consistency_score (0-100), where 100 means the writing voice is"
+            " perfectly consistent across all samples."
+        ),
     ]
     if methodology:
         system_parts.append(f"Use the '{methodology}' analysis methodology.")
