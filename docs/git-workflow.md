@@ -234,15 +234,21 @@ git checkout -b bd-sona-xxx/feature origin/main
 # ... implement with TDD ...
 git push -u origin HEAD
 
-# 4. PR — create and auto-merge
+# 4. PR — create, auto-merge, and watch CI
 gh pr create --title "[BD-xxx] type(scope): desc" --body "..."
 gh pr merge --squash --auto --subject "[BD-xxx] type(scope): desc"
+gh pr checks --watch --fail-fast       # Wait for CI to pass
+gh pr view --json state -q .state      # Confirm: must show "MERGED"
 
-# 5. Return home — park on home branch
+# 5. Close task — only after PR merges
+bd close <id>
+
+# 6. Return home — park on home branch
 git checkout agent-N-home
 
-# 6. Clean up — delete local feature branch
+# 7. Clean up — delete local feature branch and fetch latest
 git branch -d bd-sona-xxx/feature
+git fetch origin                        # Get latest main for next task
 ```
 
 ### Home Branch Pattern

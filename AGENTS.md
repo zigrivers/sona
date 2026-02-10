@@ -14,31 +14,40 @@ bd sync               # Sync with git
 
 ## Landing the Plane (Session Completion)
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until your feature branch is pushed and a PR is created.
+**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until your PR is merged.
 
 **MANDATORY WORKFLOW:**
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
 2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH FEATURE BRANCH TO REMOTE** - This is MANDATORY:
+3. **Push and create PR**:
    ```bash
    git push -u origin HEAD               # Push your feature branch (never push to main)
    gh pr create --title "[BD-xxx] type(scope): desc" --body "..."
    gh pr merge --squash --auto --subject "[BD-xxx] type(scope): desc"
-   bd sync
-   git status  # MUST show "up to date with origin"
    ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed via PR
-7. **Hand off** - Provide context for next session
+4. **Watch CI until it passes**:
+   ```bash
+   gh pr checks --watch --fail-fast       # Block until CI passes or fails
+   ```
+   If checks fail: fix locally, commit, push, re-run `gh pr checks --watch --fail-fast`.
+5. **Verify PR merged**:
+   ```bash
+   gh pr view --json state -q .state      # Must show "MERGED"
+   ```
+6. **Close task and sync**: `bd close <id>` then `bd sync` — only AFTER merge is confirmed
+7. **Clean up** - Return to home branch (`git checkout agent-N-home`), delete feature branch, `git fetch origin`
+8. **Verify** - No uncommitted changes, no unpushed feature branches
+9. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
-- Work is NOT complete until `git push -u origin HEAD` succeeds and a PR is created
+- Work is NOT complete until the PR is **merged** — not just created
+- NEVER `bd close` a task until `gh pr view --json state -q .state` shows `MERGED`
 - NEVER push directly to main — all changes go through PRs with squash merge
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
+- NEVER stop before pushing — that leaves work stranded locally
+- NEVER say "ready to push when you are" — YOU must push
 - If push fails, resolve and retry until it succeeds
+- If CI fails on the PR, fix and push — do NOT abandon the PR
 
 ## Worktree Agents
 
