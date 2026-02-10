@@ -683,7 +683,7 @@ class TestFeedbackRegen:
         content = await _generate_content(session, clone)
 
         service = ContentService(session, None)
-        with pytest.raises(ValueError, match="[Pp]rovider"):
+        with pytest.raises(ValueError, match=r"[Pp]rovider"):
             await service.feedback_regen(content.id, "Feedback.")
 
     async def test_errors_without_dna(self, session: AsyncSession) -> None:
@@ -693,7 +693,7 @@ class TestFeedbackRegen:
 
         mock_provider = AsyncMock()
         service = ContentService(session, mock_provider)
-        with pytest.raises(ValueError, match="[Dd]NA"):
+        with pytest.raises(ValueError, match=r"[Dd]NA"):
             await service.feedback_regen(content.id, "Feedback.")
 
 
@@ -751,7 +751,7 @@ class TestPartialRegen:
         mock_provider = AsyncMock()
         service = ContentService(session, mock_provider)
 
-        with pytest.raises(ValueError, match="[Ii]nvalid selection"):
+        with pytest.raises(ValueError, match=r"[Ii]nvalid selection"):
             await service.partial_regen(content.id, 0, 9999)
 
     async def test_includes_context_in_prompt(self, session: AsyncSession) -> None:
