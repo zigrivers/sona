@@ -32,4 +32,18 @@ export const dnaHandlers = [
       { status: 201 }
     );
   }),
+
+  http.get('/api/clones/:cloneId/dna/versions', () => {
+    return HttpResponse.json({ items: [] });
+  }),
+
+  http.post('/api/clones/:cloneId/dna/revert/:version', ({ params }) => {
+    return HttpResponse.json(
+      buildDna({
+        clone_id: params.cloneId as string,
+        trigger: 'revert',
+        version_number: Number(params.version),
+      })
+    );
+  }),
 ];

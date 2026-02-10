@@ -122,6 +122,26 @@ describe('DnaDisplay', () => {
     });
   });
 
+  it('shows version history section when DNA exists', async () => {
+    const dna = buildDna({ clone_id: 'clone-1' });
+    const versions = {
+      items: [
+        buildDna({ version_number: 2, trigger: 'manual_edit' }),
+        buildDna({ version_number: 1, trigger: 'initial_analysis' }),
+      ],
+    };
+    server.use(
+      http.get('/api/clones/:cloneId/dna', () => HttpResponse.json(dna)),
+      http.get('/api/clones/:cloneId/dna/versions', () => HttpResponse.json(versions))
+    );
+
+    renderWithProviders(<DnaDisplay cloneId="clone-1" />);
+
+    expect(await screen.findByText('Version History')).toBeInTheDocument();
+    expect(await screen.findByText('v2')).toBeInTheDocument();
+    expect(screen.getByText('v1')).toBeInTheDocument();
+  });
+
   it('analyze button triggers DNA generation', async () => {
     const user = userEvent.setup();
     let analyzeCalled = false;
