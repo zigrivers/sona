@@ -31,8 +31,10 @@ from app.schemas.content import (
     FeedbackRegenRequest,
     PartialRegenRequest,
 )
+from app.schemas.detection import DetectionResponse
 from app.schemas.scoring import AuthenticityScoreResponse
 from app.services.content_service import ContentService
+from app.services.detection_service import DetectionService
 from app.services.scoring_service import ScoringService
 
 router = APIRouter(prefix="/content", tags=["content"])
@@ -355,3 +357,14 @@ async def score_content(
         overall_score=content.authenticity_score,  # type: ignore[arg-type]
         dimensions=content.score_dimensions["dimensions"],  # type: ignore[index]
     )
+
+
+@router.post("/{content_id}/detect", response_model=DetectionResponse)
+async def detect_content(
+    content_id: str,
+    session: SessionDep,
+    provider: ProviderDep,
+) -> DetectionResponse:
+    """Analyze content for AI-detectable signals."""
+    service = DetectionService(session, provider)
+    return await service.detect(content_id)

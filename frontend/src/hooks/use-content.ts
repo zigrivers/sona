@@ -8,6 +8,7 @@ import type {
   ContentListResponse,
   ContentResponse,
   ContentVersionListResponse,
+  DetectionResponse,
 } from '@/types/api';
 
 interface ContentListParams {
@@ -110,6 +111,12 @@ export function useUpdateContent() {
 export function useScoreContent() {
   return useMutation({
     mutationFn: (id: string) => api.post<AuthenticityScoreResponse>(`/api/content/${id}/score`),
+  });
+}
+
+export function useDetectAI() {
+  return useMutation({
+    mutationFn: (id: string) => api.post<DetectionResponse>(`/api/content/${id}/detect`),
   });
 }
 

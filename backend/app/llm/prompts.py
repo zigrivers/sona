@@ -255,3 +255,38 @@ def build_scoring_prompt(
         {"role": "system", "content": system_content},
         {"role": "user", "content": user_content},
     ]
+
+
+def build_detection_prompt(content_text: str) -> list[dict[str, str]]:
+    """Build a message list for AI detection analysis of content.
+
+    Args:
+        content_text: The content text to analyze for AI-detectable signals.
+
+    Returns:
+        A list of message dicts with role/content keys.
+    """
+    system_content = "\n\n".join(
+        [
+            "You are an AI content detection expert."
+            " Analyze the following text for patterns commonly associated"
+            " with AI-generated content.",
+            "Look for: overly uniform sentence structure, lack of personal anecdotes,"
+            " generic transitions, predictable paragraph patterns,"
+            " and absence of distinctive voice markers.",
+            "Return ONLY a JSON object in this exact format:\n"
+            '{"risk_level": "<low|medium|high>",'
+            ' "confidence": <0-100>,'
+            ' "flagged_passages": [{"text": "<excerpt>",'
+            ' "reason": "<why flagged>",'
+            ' "suggestion": "<how to fix>"}],'
+            ' "summary": "<brief summary of findings>"}',
+        ]
+    )
+
+    user_content = f"Analyze the following content for AI-detectable signals:\n\n{content_text}"
+
+    return [
+        {"role": "system", "content": system_content},
+        {"role": "user", "content": user_content},
+    ]

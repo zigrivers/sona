@@ -149,4 +149,19 @@ export const contentHandlers = [
       })
     );
   }),
+
+  http.post('/api/content/:id/detect', () => {
+    return HttpResponse.json({
+      risk_level: 'medium',
+      confidence: 72,
+      flagged_passages: [
+        {
+          text: 'Furthermore, it is important to note',
+          reason: 'Generic transitional phrase common in AI output',
+          suggestion: 'Replace with a more natural transition',
+        },
+      ],
+      summary: 'Some AI-like patterns detected.',
+    });
+  }),
 ];
