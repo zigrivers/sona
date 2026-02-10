@@ -29,7 +29,9 @@ from app.schemas.content import (
     ContentVersionListResponse,
     ContentVersionResponse,
 )
+from app.schemas.scoring import AuthenticityScoreResponse
 from app.services.content_service import ContentService
+from app.services.scoring_service import ScoringService
 
 router = APIRouter(prefix="/content", tags=["content"])
 
@@ -284,3 +286,25 @@ async def restore_content_version(
         )
     await session.commit()
     return ContentResponse.model_validate(content)
+
+
+@router.post("/{content_id}/score", response_model=AuthenticityScoreResponse)
+async def score_content(
+    content_id: str,
+    session: SessionDep,
+    provider: ProviderDep,
+) -> AuthenticityScoreResponse | JSONResponse:
+    """Score content for voice authenticity across 8 dimensions."""
+    service = ScoringService(session, provider)
+    try:
+        content = await service.score(content_id)
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": str(exc), "code": "DNA_REQUIRED"},
+        )
+    await session.commit()
+    return AuthenticityScoreResponse(
+        overall_score=content.authenticity_score,  # type: ignore[arg-type]
+        dimensions=content.score_dimensions["dimensions"],  # type: ignore[index]
+    )

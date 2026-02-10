@@ -1,5 +1,6 @@
 """Tests for content generation API endpoints."""
 
+import json
 from collections.abc import AsyncGenerator
 from typing import Any
 from unittest.mock import AsyncMock
@@ -560,3 +561,82 @@ class TestBulkEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["count"] == 2
+
+
+def _make_score_response() -> str:
+    """Build a fake LLM JSON response for scoring."""
+    dims = [
+        {"name": "vocabulary_match", "score": 85, "feedback": "Good match"},
+        {"name": "sentence_flow", "score": 90, "feedback": "Strong flow"},
+        {"name": "structural_rhythm", "score": 78, "feedback": "Decent rhythm"},
+        {"name": "tone_fidelity", "score": 92, "feedback": "Excellent tone"},
+        {"name": "rhetorical_fingerprint", "score": 88, "feedback": "Good rhetoric"},
+        {"name": "punctuation_signature", "score": 75, "feedback": "Acceptable"},
+        {"name": "hook_and_close", "score": 80, "feedback": "Solid hooks"},
+        {"name": "voice_personality", "score": 86, "feedback": "Strong personality"},
+    ]
+    return json.dumps({"dimensions": dims})
+
+
+class TestScoreEndpoint:
+    async def test_score_returns_200(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """POST /api/content/{id}/score should return 200 with scores."""
+        item = await _generate_one(client, session, mock_provider)
+
+        # Now mock the scoring LLM call
+        mock_provider.complete = AsyncMock(return_value=_make_score_response())
+
+        response = await client.post(f"/api/content/{item['id']}/score")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "overall_score" in data
+        assert "dimensions" in data
+        assert len(data["dimensions"]) == 8
+        assert isinstance(data["overall_score"], int)
+        # Verify dimension structure
+        dim = data["dimensions"][0]
+        assert "name" in dim
+        assert "score" in dim
+        assert "feedback" in dim
+
+    async def test_score_content_not_found_404(self, client: AsyncClient) -> None:
+        """POST /api/content/{id}/score for non-existent content should return 404."""
+        response = await client.post("/api/content/nonexistent-id/score")
+        assert response.status_code == 404
+
+    async def test_score_without_dna_400(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        mock_provider: AsyncMock,
+    ) -> None:
+        """POST /api/content/{id}/score without DNA should return 400."""
+        # Create clone without DNA
+        clone = VoiceClone(id=nanoid.generate(), name="No DNA Clone")
+        session.add(clone)
+        await session.flush()
+
+        # Create content directly (bypassing generate which needs DNA)
+        content = Content(
+            id=nanoid.generate(),
+            clone_id=clone.id,
+            platform="blog",
+            status="draft",
+            content_current="Some content.",
+            content_original="Some content.",
+            input_text="Write something.",
+            word_count=2,
+            char_count=13,
+        )
+        session.add(content)
+        await session.commit()
+
+        response = await client.post(f"/api/content/{content.id}/score")
+        assert response.status_code == 400
+        assert "DNA" in response.json()["detail"]

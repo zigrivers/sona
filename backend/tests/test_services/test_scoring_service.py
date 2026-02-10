@@ -1,10 +1,21 @@
-"""Tests for confidence scoring service."""
+"""Tests for confidence scoring algorithm and authenticity scoring service."""
 
+import json
 from types import SimpleNamespace
+from typing import Any
+from unittest.mock import AsyncMock
 
+import nanoid
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.scoring_service import calculate_confidence
+from app.exceptions import ContentNotFoundError
+from app.models.clone import VoiceClone
+from app.models.content import Content
+from app.models.dna import VoiceDNAVersion
+from app.services.scoring_service import ScoringService, calculate_confidence
+
+# ── Confidence scoring helpers ─────────────────────────────────────
 
 
 def _make_sample(
@@ -244,3 +255,202 @@ class TestFullScore:
         # word_count=8000 → 30, sample_count=8 → 20, type_variety=4 → 20,
         # length_mix=3 → 15, consistency=100 → 15 => total=100
         assert calculate_confidence(clone) == 100
+
+
+# ── Authenticity scoring helpers ───────────────────────────────────
+
+DIMENSIONS = [
+    "vocabulary_match",
+    "sentence_flow",
+    "structural_rhythm",
+    "tone_fidelity",
+    "rhetorical_fingerprint",
+    "punctuation_signature",
+    "hook_and_close",
+    "voice_personality",
+]
+
+
+def _make_llm_response(scores: list[int] | None = None) -> str:
+    """Build a fake LLM JSON response with 8 dimension scores."""
+    if scores is None:
+        scores = [85, 90, 78, 92, 88, 75, 80, 86]
+    dims = [
+        {
+            "name": name,
+            "score": score,
+            "feedback": f"Good {name}" if score >= 70 else f"Improve {name}",
+        }
+        for name, score in zip(DIMENSIONS, scores, strict=True)
+    ]
+    return json.dumps({"dimensions": dims})
+
+
+async def _create_clone(session: AsyncSession) -> VoiceClone:
+    clone = VoiceClone(id=nanoid.generate(), name="Test Clone")
+    session.add(clone)
+    await session.flush()
+    return clone
+
+
+async def _create_dna(
+    session: AsyncSession,
+    clone_id: str,
+    data: dict[str, Any] | None = None,
+) -> VoiceDNAVersion:
+    dna = VoiceDNAVersion(
+        id=nanoid.generate(),
+        clone_id=clone_id,
+        version_number=1,
+        data=data or {"tone": "conversational", "humor": "dry", "formality": "casual"},
+        trigger="initial_analysis",
+        model_used="test-model",
+    )
+    session.add(dna)
+    await session.flush()
+    return dna
+
+
+async def _create_content(session: AsyncSession, clone_id: str) -> Content:
+    content = Content(
+        id=nanoid.generate(),
+        clone_id=clone_id,
+        platform="blog",
+        status="draft",
+        content_current="This is generated content for scoring.",
+        content_original="This is generated content for scoring.",
+        input_text="Write a blog post.",
+        word_count=6,
+        char_count=43,
+    )
+    session.add(content)
+    await session.flush()
+    return content
+
+
+class TestScoringService:
+    async def test_score_returns_8_dimensions(self, session: AsyncSession) -> None:
+        """score() should return content with all 8 dimension scores."""
+        clone = await _create_clone(session)
+        await _create_dna(session, clone.id)
+        content = await _create_content(session, clone.id)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=_make_llm_response())
+
+        service = ScoringService(session, mock_provider)
+        scored = await service.score(content.id)
+
+        assert scored.score_dimensions is not None
+        dims = scored.score_dimensions["dimensions"]
+        assert len(dims) == 8
+        dim_names = {d["name"] for d in dims}
+        assert dim_names == set(DIMENSIONS)
+
+    async def test_overall_score_is_average(self, session: AsyncSession) -> None:
+        """overall_score should be round(mean(dimension_scores))."""
+        clone = await _create_clone(session)
+        await _create_dna(session, clone.id)
+        content = await _create_content(session, clone.id)
+
+        scores = [80, 90, 70, 60, 85, 75, 95, 65]
+        expected = round(sum(scores) / len(scores))
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=_make_llm_response(scores))
+
+        service = ScoringService(session, mock_provider)
+        scored = await service.score(content.id)
+
+        assert scored.authenticity_score == expected
+
+    async def test_dimension_below_70_has_feedback(self, session: AsyncSession) -> None:
+        """Dimensions scoring below 70 must have non-empty feedback."""
+        clone = await _create_clone(session)
+        await _create_dna(session, clone.id)
+        content = await _create_content(session, clone.id)
+
+        scores = [85, 90, 50, 92, 88, 40, 80, 86]
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=_make_llm_response(scores))
+
+        service = ScoringService(session, mock_provider)
+        scored = await service.score(content.id)
+
+        dims = scored.score_dimensions["dimensions"]
+        for dim in dims:
+            if dim["score"] < 70:
+                assert dim["feedback"], f"Missing feedback for {dim['name']} (score {dim['score']})"
+
+    async def test_scoring_prompt_includes_dna(self, session: AsyncSession) -> None:
+        """The scoring prompt should include Voice DNA data."""
+        clone = await _create_clone(session)
+        await _create_dna(session, clone.id, data={"tone": "witty", "humor": "sarcastic"})
+        content = await _create_content(session, clone.id)
+
+        captured_messages: list[list[dict[str, str]]] = []
+
+        async def capture_complete(messages: list[dict[str, str]], **kwargs: Any) -> str:
+            captured_messages.append(messages)
+            return _make_llm_response()
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(side_effect=capture_complete)
+
+        service = ScoringService(session, mock_provider)
+        await service.score(content.id)
+
+        assert len(captured_messages) == 1
+        full_prompt = " ".join(m["content"] for m in captured_messages[0])
+        assert "witty" in full_prompt.lower()
+        assert "sarcastic" in full_prompt.lower()
+
+    async def test_scoring_prompt_includes_content(self, session: AsyncSession) -> None:
+        """The scoring prompt should include the generated content text."""
+        clone = await _create_clone(session)
+        await _create_dna(session, clone.id)
+        content = await _create_content(session, clone.id)
+
+        captured_messages: list[list[dict[str, str]]] = []
+
+        async def capture_complete(messages: list[dict[str, str]], **kwargs: Any) -> str:
+            captured_messages.append(messages)
+            return _make_llm_response()
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(side_effect=capture_complete)
+
+        service = ScoringService(session, mock_provider)
+        await service.score(content.id)
+
+        assert len(captured_messages) == 1
+        full_prompt = " ".join(m["content"] for m in captured_messages[0])
+        assert "This is generated content for scoring." in full_prompt
+
+    async def test_score_content_not_found(self, session: AsyncSession) -> None:
+        """score() should raise ContentNotFoundError for missing content."""
+        mock_provider = AsyncMock()
+        service = ScoringService(session, mock_provider)
+
+        with pytest.raises(ContentNotFoundError):
+            await service.score("nonexistent-id")
+
+    async def test_score_persisted_to_db(self, session: AsyncSession) -> None:
+        """score() should persist authenticity_score and score_dimensions to the content row."""
+        clone = await _create_clone(session)
+        await _create_dna(session, clone.id)
+        content = await _create_content(session, clone.id)
+
+        scores = [85, 90, 78, 92, 88, 75, 80, 86]
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=_make_llm_response(scores))
+
+        service = ScoringService(session, mock_provider)
+        await service.score(content.id)
+        await session.flush()
+
+        # Re-fetch from DB to confirm persistence
+        await session.refresh(content)
+        assert content.authenticity_score == round(sum(scores) / len(scores))
+        assert content.score_dimensions is not None
+        assert len(content.score_dimensions["dimensions"]) == 8
