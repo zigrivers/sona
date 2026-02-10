@@ -110,9 +110,7 @@ export function DnaVersionHistory({ cloneId }: DnaVersionHistoryProps) {
               >
                 <span className="font-medium">v{version.version_number}</span>
                 {getTriggerBadge(version.trigger)}
-                {isCurrent && (
-                  <span className="text-muted-foreground text-xs">(current)</span>
-                )}
+                {isCurrent && <span className="text-muted-foreground text-xs">(current)</span>}
                 <span className="text-muted-foreground ml-auto">
                   {formatRelativeTime(version.created_at)}
                 </span>

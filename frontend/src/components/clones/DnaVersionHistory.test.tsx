@@ -92,7 +92,9 @@ describe('DnaVersionHistory', () => {
     await user.click(v3Row);
 
     expect(screen.getByText('Version 3 Preview')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /revert to this version/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /revert to this version/i })
+    ).not.toBeInTheDocument();
   });
 
   it('revert calls API with correct version number', async () => {
