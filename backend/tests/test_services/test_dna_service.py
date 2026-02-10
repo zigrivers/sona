@@ -37,6 +37,7 @@ MOCK_DNA_RESPONSE = json.dumps(
             "humor": 40,
             "signatures": 65,
         },
+        "consistency_score": 85,
     }
 )
 
@@ -202,6 +203,19 @@ class TestAnalyze:
         assert dna.prominence_scores is not None
         assert len(dna.prominence_scores) == 9
         assert dna.prominence_scores["vocabulary"] == 85
+
+    async def test_extracts_consistency_score_from_response(self, session: AsyncSession) -> None:
+        """analyze extracts consistency_score from LLM response into data."""
+        clone = await _create_clone(session)
+        await _seed_methodology(session)
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=MOCK_DNA_RESPONSE)
+
+        svc = DNAService(session)
+        dna = await svc.analyze(clone.id, mock_provider, model="gpt-4o")
+
+        assert dna.data["consistency_score"] == 85
 
 
 class TestGetCurrentDNA:

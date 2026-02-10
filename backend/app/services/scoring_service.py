@@ -71,11 +71,21 @@ def _score_length_mix(unique_categories: int) -> int:
 
 
 def _score_consistency(dna_versions: list[Any]) -> int:
-    """Score based on DNA prominence scores from the latest version."""
+    """Score based on LLM-rated consistency_score, falling back to prominence avg."""
     if not dna_versions:
         return 0
 
     latest = max(dna_versions, key=lambda v: v.version_number)
+
+    # Prefer explicit consistency_score from DNA data
+    consistency_score = latest.data.get("consistency_score") if latest.data else None
+    if consistency_score is not None:
+        return min(
+            int(consistency_score * CONFIDENCE_MAX_CONSISTENCY / 100),
+            CONFIDENCE_MAX_CONSISTENCY,
+        )
+
+    # Fallback: average prominence scores (backwards compat with pre-existing DNA)
     scores = latest.prominence_scores
     if not scores:
         return 0

@@ -24,10 +24,12 @@ def _make_dna_version(
     *,
     version_number: int = 1,
     prominence_scores: dict[str, int] | None = None,
+    data: dict[str, object] | None = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
         version_number=version_number,
         prominence_scores=prominence_scores,
+        data=data or {},
     )
 
 
@@ -147,29 +149,56 @@ class TestConsistency:
         clone = _make_clone()
         assert calculate_confidence(clone) == 0
 
-    def test_consistency_with_prominence_scores(self) -> None:
-        """Consistency should use avg prominence from latest DNA version."""
+    def test_consistency_score_mapped_to_15_point_scale(self) -> None:
+        """consistency_score=80 in DNA data should map to 12 (80*15/100)."""
+        dna = _make_dna_version(
+            version_number=1,
+            data={"consistency_score": 80},
+        )
+        clone = _make_clone(dna_versions=[dna])
+        # No samples → all other components are 0
+        assert calculate_confidence(clone) == 12
+
+    def test_consistency_score_100_gives_max(self) -> None:
+        """consistency_score=100 should give max 15 points."""
+        dna = _make_dna_version(
+            version_number=1,
+            data={"consistency_score": 100},
+        )
+        clone = _make_clone(dna_versions=[dna])
+        assert calculate_confidence(clone) == 15
+
+    def test_consistency_score_zero_gives_zero(self) -> None:
+        """consistency_score=0 should give 0 points."""
+        dna = _make_dna_version(
+            version_number=1,
+            data={"consistency_score": 0},
+        )
+        clone = _make_clone(dna_versions=[dna])
+        assert calculate_confidence(clone) == 0
+
+    def test_fallback_to_prominence_scores(self) -> None:
+        """Without consistency_score, should fall back to avg prominence scores."""
         dna = _make_dna_version(
             version_number=1,
             prominence_scores={"tone": 80, "vocabulary": 60, "structure": 100},
         )
         clone = _make_clone(dna_versions=[dna])
         # avg = (80+60+100)/3 = 80 → (80/100)*15 = 12
-        # No samples → all other components are 0
         assert calculate_confidence(clone) == 12
 
     def test_consistency_uses_latest_version(self) -> None:
         """Should use the highest version_number for consistency."""
         old_dna = _make_dna_version(
             version_number=1,
-            prominence_scores={"tone": 20},
+            data={"consistency_score": 20},
         )
         new_dna = _make_dna_version(
             version_number=2,
-            prominence_scores={"tone": 100},
+            data={"consistency_score": 100},
         )
         clone = _make_clone(dna_versions=[old_dna, new_dna])
-        # avg = 100 → (100/100)*15 = 15
+        # consistency_score=100 → 15
         assert calculate_confidence(clone) == 15
 
 
@@ -183,14 +212,14 @@ class TestFullScore:
         ]
         dna = _make_dna_version(
             version_number=1,
-            prominence_scores={"tone": 80, "vocab": 60},
+            data={"consistency_score": 70},
         )
         clone = _make_clone(samples=samples, dna_versions=[dna])
         # word_count=5500 → 30
         # sample_count=3 → 12
         # type_variety=3 → 15
         # length_mix=3 → 15
-        # consistency: avg=(80+60)/2=70 → (70/100)*15=10.5 → int(10.5)=10
+        # consistency: 70*15/100=10.5 → int(10.5)=10
         assert calculate_confidence(clone) == 30 + 12 + 15 + 15 + 10
 
     def test_score_capped_at_100(self) -> None:
@@ -209,7 +238,7 @@ class TestFullScore:
             )
         dna = _make_dna_version(
             version_number=1,
-            prominence_scores={"a": 100, "b": 100},
+            data={"consistency_score": 100},
         )
         clone = _make_clone(samples=samples, dna_versions=[dna])
         # word_count=8000 → 30, sample_count=8 → 20, type_variety=4 → 20,
