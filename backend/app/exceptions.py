@@ -86,6 +86,14 @@ class ContentNotFoundError(SonaError):
         )
 
 
+class PresetNotFoundError(SonaError):
+    def __init__(self, preset_id: str) -> None:
+        super().__init__(
+            detail=f"Generation preset '{preset_id}' not found",
+            code="PRESET_NOT_FOUND",
+        )
+
+
 class DemoCloneReadonlyError(SonaError):
     def __init__(self, clone_id: str) -> None:
         super().__init__(

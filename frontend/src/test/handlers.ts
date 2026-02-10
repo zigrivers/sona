@@ -5,6 +5,7 @@ import { contentHandlers } from './handlers/content';
 import { dataHandlers } from './handlers/data';
 import { dnaHandlers } from './handlers/dna';
 import { methodologyHandlers } from './handlers/methodology';
+import { presetHandlers } from './handlers/presets';
 import { providerHandlers } from './handlers/providers';
 import { sampleHandlers } from './handlers/samples';
 
@@ -13,6 +14,7 @@ export const handlers = [
   ...contentHandlers,
   ...dataHandlers,
   ...dnaHandlers,
+  ...presetHandlers,
   ...providerHandlers,
   ...methodologyHandlers,
   ...sampleHandlers,
