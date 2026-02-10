@@ -101,10 +101,10 @@ EOF
 Always squash merge. Set the PR title to match commit convention so the squash commit message is correct:
 
 ```bash
-gh pr merge --squash --auto --subject "[BD-<short-id>] type(scope): description"
+gh pr merge --squash --auto --delete-branch
 ```
 
-The `--auto` flag merges automatically once CI passes and requirements are met.
+The PR title becomes the squash commit message automatically (configured via GitHub's "Pull request title and description" default). `--auto` merges once CI passes. `--delete-branch` removes the remote branch after merge.
 
 ### PR Rules
 
@@ -236,19 +236,20 @@ git push -u origin HEAD
 
 # 4. PR — create, auto-merge, and watch CI
 gh pr create --title "[BD-xxx] type(scope): desc" --body "..."
-gh pr merge --squash --auto --subject "[BD-xxx] type(scope): desc"
+gh pr merge --squash --auto --delete-branch
 gh pr checks --watch --fail-fast       # Wait for CI to pass
 gh pr view --json state -q .state      # Confirm: must show "MERGED"
 
 # 5. Close task — only after PR merges
 bd close <id>
+bd sync
 
 # 6. Return home — park on home branch
 git checkout agent-N-home
 
 # 7. Clean up — delete local feature branch and fetch latest
 git branch -d bd-sona-xxx/feature
-git fetch origin                        # Get latest main for next task
+git fetch origin --prune                # Get latest main, remove stale remote refs
 ```
 
 ### Home Branch Pattern

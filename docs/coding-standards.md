@@ -19,6 +19,7 @@ Definitive code quality reference for the Sona project. Every AI agent and human
 9. [AI-Specific Coding Rules](#9-ai-specific-coding-rules)
 10. [Code Review Checklist](#10-code-review-checklist)
 11. [Tooling Quick Reference](#11-tooling-quick-reference)
+12. [Commit Message Format](#12-commit-message-format)
 
 ---
 
@@ -1392,3 +1393,44 @@ import { Button } from '@/components/ui/button';
 Configured in:
 - `frontend/tsconfig.json` — `"paths": { "@/*": ["src/*"] }`
 - `frontend/vite.config.ts` — `resolve.alias` (must be added during scaffolding)
+
+---
+
+## 12. Commit Message Format
+
+Every commit requires a Beads task ID. This format is enforced by CI on PR titles and used as the squash commit message.
+
+### Format
+
+```
+[BD-<short-id>] type(scope): description
+```
+
+Where `<short-id>` is the task ID without the project prefix (e.g., `sona-abc` becomes `abc`).
+
+### Types
+
+| Type | Use |
+|------|-----|
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `refactor` | Code restructuring (no behavior change) |
+| `test` | Adding or updating tests |
+| `docs` | Documentation changes |
+| `chore` | Build, CI, tooling changes |
+
+### Examples
+
+```
+[BD-abc] feat(auth): add JWT token validation
+[BD-xyz] fix(streaks): handle timezone edge case in streak calculation
+[BD-123] chore(ci): add Python linting to CI pipeline
+[BD-ggg] docs(workflow): align docs with canonical workflow
+```
+
+### Rules
+
+- Every commit requires a Beads task ID — no exceptions
+- Use imperative mood ("add", not "added" or "adds")
+- Keep the subject line under 72 characters
+- Scope should match the area of change (e.g., `auth`, `content`, `ci`, `scoring`)

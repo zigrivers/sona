@@ -18,22 +18,28 @@ Sona is an AI-powered language learning app. Architecture: React/TypeScript fron
 
 ## Workflow
 
-### 1. Session Start
+### Step 1: Pick or Create Task
 ```bash
 bd ready                    # See unblocked tasks
 # Pick lowest-ID available task
 bd update <id> --status in_progress --claim
+```
+For ad-hoc bug reports or requests: create a task first (`bd create "Fix: <desc>" -p 1 && bd update <id> --claim`), then continue from Step 2.
+
+Review `tasks/lessons.md` for relevant patterns before starting.
+
+### Step 2: Create Feature Branch
+```bash
 git fetch origin
 git checkout -b bd-<task-id>/<short-desc> origin/main
 ```
-Review `tasks/lessons.md` for relevant patterns before starting.
 
-### 2. Plan Before Building
+### Step 3: Plan First
 - Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
 - If something goes sideways, **STOP and re-plan** — don't push through
 - Write specs upfront to reduce ambiguity
 
-### 3. Implementation Loop
+### Step 4: TDD Loop (Red → Green → Refactor)
 1. **Red**: Write a failing test that defines the expected behavior
 2. **Green**: Write the minimum code to make it pass
 3. **Refactor**: Clean up while tests stay green
@@ -41,50 +47,57 @@ Review `tasks/lessons.md` for relevant patterns before starting.
 5. **Commit**: `git commit -m "[BD-<short-id>] type(scope): description"`
    - `<short-id>` = task ID without project prefix (e.g., `sona-ggg` → `ggg`)
    - Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
-6. **Push + PR**:
-   ```bash
-   git push -u origin HEAD
-   gh pr create --title "[BD-<short-id>] type(scope): description" --body "..."
-   gh pr merge --squash --auto --subject "[BD-<short-id>] type(scope): description"
-   gh pr checks --watch --fail-fast   # Block until CI passes (or fails)
-   gh pr view --json state -q .state  # Confirm: must show "MERGED"
-   ```
-   If checks fail: fix locally, commit, push, and re-run `gh pr checks --watch --fail-fast`.
 
 For non-trivial changes, pause and ask: *"Is there a more elegant way?"*
 
-### 4. Ad-Hoc Fixes
-When given a bug report or ad-hoc request: create a Beads task first (`bd create "Fix: <desc>" -p 1 && bd update <id> --claim`), then follow the Implementation Loop above. When pointing at logs, errors, or failing tests: just fix them — zero hand-holding required.
-
-### 5. Subagent Strategy
-- Offload research, exploration, and parallel analysis to subagents
-- One task per subagent for focused execution — keeps main context clean
-- For complex problems, throw more compute at it via subagents
-
-### 6. Continue to Next Task
-After PR merge is confirmed (`gh pr view --json state -q .state` → `MERGED`):
+### Step 5: Push and Create PR
 ```bash
-bd close <id>                               # Close task ONLY after PR merges
-git checkout agent-N-home                   # Worktree: return to home branch
-git branch -d bd-<task-id>/<short-desc>     # Clean up local feature branch
-git fetch origin                            # Get latest main for next branch
-bd ready                                    # Check for more unblocked tasks
+git push -u origin HEAD
+gh pr create --title "[BD-<short-id>] type(scope): description" --body "..."
+gh pr merge --squash --auto --delete-branch
 ```
-- **Never `bd close` before the PR merges** — if CI fails, the task stays in progress
-- If tasks are available: pick the lowest-ID, create a feature branch, and implement it
+The PR title becomes the squash commit message automatically. `--delete-branch` removes the remote branch after merge.
+
+### Step 6: Watch CI
+```bash
+gh pr checks --watch --fail-fast   # Block until CI passes (or fails)
+```
+If checks fail: fix locally, commit, push, and re-run `gh pr checks --watch --fail-fast`.
+
+### Step 7: Confirm Merge
+```bash
+gh pr view --json state -q .state  # Must show "MERGED"
+```
+**Never `bd close` before the PR merges** — if CI fails, the task stays in progress.
+
+### Step 8: Close Task and Clean Up
+```bash
+bd close <id>
+bd sync
+
+# Worktree:
+git checkout agent-N-home                   # Return to home branch
+git branch -d bd-<task-id>/<short-desc>     # Delete local feature branch
+git fetch origin --prune                    # Get latest main, remove stale remote refs
+
+# Main repo (non-worktree):
+# git checkout main && git pull --rebase origin main
+# git branch -d bd-<task-id>/<short-desc>
+# git fetch origin --prune
+```
+
+### Step 9: Next Task or Done
+```bash
+bd ready                    # Check for more unblocked tasks
+```
+- If tasks are available: pick the lowest-ID, go back to Step 1
 - If no tasks available: you're done — all work is complete
 - **Keep working until `bd ready` returns no available tasks**
 
-### 7. Session End (MANDATORY)
-```bash
-bd close <id>               # or bd update <id> --status in_progress if not done
-bd sync
-# Clean up — these steps are MANDATORY, not optional
-git checkout agent-N-home                   # Worktree: park on home branch (Main repo: git checkout main && git pull --rebase origin main)
-git branch -d bd-<task-id>/<short-desc>     # Delete local feature branch
-git fetch origin                            # Get latest main
-```
-Confirm: no uncommitted changes, no unpushed feature branches, no stale local branches.
+### Subagent Strategy
+- Offload research, exploration, and parallel analysis to subagents
+- One task per subagent for focused execution — keeps main context clean
+- For complex problems, throw more compute at it via subagents
 
 ## Git Rules
 
@@ -92,7 +105,7 @@ Confirm: no uncommitted changes, no unpushed feature branches, no stale local br
 |------|---------|
 | **Branch naming** | `bd-<task-id>/<short-desc>` (e.g., `bd-sona-abc/add-login`) |
 | **Commit format** | `[BD-<short-id>] type(scope): description` |
-| **PR flow** | `git push -u origin HEAD` → `gh pr create` → `gh pr merge --squash --auto` → `gh pr checks --watch --fail-fast` → confirm `MERGED` |
+| **PR flow** | `git push -u origin HEAD` → `gh pr create` → `gh pr merge --squash --auto --delete-branch` → `gh pr checks --watch --fail-fast` → confirm `MERGED` |
 | **Stay current** | `git fetch origin && git rebase origin/main` before pushing |
 | **Force push** | Only `--force-with-lease` on feature branches. **Never** force push to main. |
 
