@@ -97,9 +97,9 @@ export function CloneHeader({ clone, onUpdate, onDelete }: CloneHeaderProps) {
           <DialogHeader>
             <DialogTitle>Delete Clone</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete &quot;{clone.name}&quot;? This clone will be
-              moved to trash and permanently deleted after 30 days. You can restore it
-              from the deleted clones section.
+              Are you sure you want to delete &quot;{clone.name}&quot;? This clone will be moved to
+              trash and permanently deleted after 30 days. You can restore it from the deleted
+              clones section.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

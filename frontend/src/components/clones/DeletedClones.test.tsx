@@ -106,9 +106,7 @@ describe('DeletedClones', () => {
 
     // Import and render CloneHeader to check updated text
     const { CloneHeader } = await import('./CloneHeader');
-    renderWithProviders(
-      <CloneHeader clone={clone} onUpdate={() => {}} onDelete={() => {}} />
-    );
+    renderWithProviders(<CloneHeader clone={clone} onUpdate={() => {}} onDelete={() => {}} />);
 
     await user.click(screen.getByRole('button', { name: /^delete$/i }));
 
