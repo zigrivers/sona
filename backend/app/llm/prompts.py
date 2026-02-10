@@ -70,3 +70,53 @@ def build_generation_prompt(
         {"role": "system", "content": "\n\n".join(system_parts)},
         {"role": "user", "content": input_text},
     ]
+
+
+_SCORING_DIMENSIONS = [
+    "vocabulary_match",
+    "sentence_flow",
+    "structural_rhythm",
+    "tone_fidelity",
+    "rhetorical_fingerprint",
+    "punctuation_signature",
+    "hook_and_close",
+    "voice_personality",
+]
+
+
+def build_scoring_prompt(
+    dna_json: str,
+    content_text: str,
+) -> list[dict[str, str]]:
+    """Build a message list for authenticity scoring of generated content.
+
+    Args:
+        dna_json: JSON string of the Voice DNA profile.
+        content_text: The generated content text to score.
+
+    Returns:
+        A list of message dicts with role/content keys.
+    """
+    dim_list = ", ".join(_SCORING_DIMENSIONS)
+
+    system_content = "\n\n".join(
+        [
+            "You are an expert voice analyst evaluating how authentically"
+            " a piece of content matches an author's Voice DNA.",
+            f"Score the content on these 8 dimensions (0-100 each): {dim_list}.",
+            "Return ONLY a JSON object in this exact format:\n"
+            '{"dimensions": [{"name": "<dimension>", "score": <0-100>,'
+            ' "feedback": "<actionable feedback>"}]}',
+            "For any dimension scoring below 70, provide specific,"
+            " actionable feedback with examples of how to improve.",
+            "For dimensions scoring 70 or above, a brief positive note is sufficient.",
+            f"Voice DNA profile:\n{dna_json}",
+        ]
+    )
+
+    user_content = f"Score the following content for voice authenticity:\n\n{content_text}"
+
+    return [
+        {"role": "system", "content": system_content},
+        {"role": "user", "content": user_content},
+    ]

@@ -1,8 +1,12 @@
-"""Confidence scoring algorithm for voice clones."""
+"""Confidence scoring algorithm and authenticity scoring service for voice clones."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+import json
+from typing import TYPE_CHECKING, Any, cast
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.constants import (
     CONFIDENCE_MAX_CONSISTENCY,
@@ -11,6 +15,11 @@ from app.constants import (
     CONFIDENCE_MAX_TYPE_VARIETY,
     CONFIDENCE_MAX_WORD_COUNT,
 )
+from app.exceptions import ContentNotFoundError
+from app.llm.base import LLMProvider
+from app.llm.prompts import build_scoring_prompt
+from app.models.content import Content
+from app.models.dna import VoiceDNAVersion
 
 if TYPE_CHECKING:
     from app.models.clone import VoiceClone
@@ -115,3 +124,57 @@ def calculate_confidence(clone: VoiceClone | Any) -> int:
     )
 
     return min(score, 100)
+
+
+class ScoringService:
+    def __init__(self, session: AsyncSession, provider: LLMProvider) -> None:
+        self._session = session
+        self._provider = provider
+
+    async def score(self, content_id: str) -> Content:
+        """Score content for voice authenticity across 8 dimensions.
+
+        Raises:
+            ContentNotFoundError: If content doesn't exist.
+            ValueError: If clone has no DNA.
+        """
+        content = await self._get_content(content_id)
+        dna = await self._get_latest_dna(content.clone_id)
+
+        raw_data = cast(dict[str, Any], dna.data)  # pyright: ignore[reportUnknownMemberType]
+        dna_json = json.dumps(raw_data)
+
+        messages = build_scoring_prompt(dna_json=dna_json, content_text=content.content_current)
+        response = await self._provider.complete(messages, temperature=0.3)
+
+        parsed = json.loads(response)
+        dimensions: list[dict[str, Any]] = parsed["dimensions"]
+
+        scores = [d["score"] for d in dimensions]
+        overall = round(sum(scores) / len(scores))
+
+        content.authenticity_score = overall
+        content.score_dimensions = {"dimensions": dimensions}
+        await self._session.flush()
+
+        return content
+
+    async def _get_content(self, content_id: str) -> Content:
+        result = await self._session.execute(select(Content).where(Content.id == content_id))
+        content = result.scalar_one_or_none()
+        if content is None:
+            raise ContentNotFoundError(content_id)
+        return content
+
+    async def _get_latest_dna(self, clone_id: str) -> VoiceDNAVersion:
+        result = await self._session.execute(
+            select(VoiceDNAVersion)
+            .where(VoiceDNAVersion.clone_id == clone_id)
+            .order_by(VoiceDNAVersion.version_number.desc())
+            .limit(1)
+        )
+        dna = result.scalar_one_or_none()
+        if dna is None:
+            msg = "Analyze Voice DNA before scoring content"
+            raise ValueError(msg)
+        return dna
