@@ -1,6 +1,7 @@
 import type {
   CloneResponse,
   ContentResponse,
+  DNAResponse,
   MethodologyResponse,
   MethodologyVersionResponse,
   ProviderResponse,
@@ -108,6 +109,35 @@ export function buildMethodologyVersion(
     version_number: 1,
     content: 'Version content.',
     trigger: 'manual_edit',
+    created_at: NOW,
+    ...overrides,
+  };
+}
+
+export function buildDna(overrides: Partial<DNAResponse> = {}): DNAResponse {
+  counter += 1;
+  return {
+    id: `dna-${counter}`,
+    clone_id: 'clone-1',
+    version_number: 1,
+    data: {
+      vocabulary: { complexity_level: 'intermediate', jargon_usage: 'moderate' },
+      sentence_structure: { average_length: 'medium' },
+      paragraph_structure: { average_length: 'medium' },
+      tone: { formality_level: 'semi-formal', primary_tone: 'conversational' },
+      rhetorical_devices: { metaphor_usage: 'occasional' },
+      punctuation: { em_dash_frequency: 'moderate' },
+      openings_and_closings: { hook_style: 'question' },
+      humor: { frequency: 'occasional' },
+      signatures: { catchphrases: ['Let me tell you', 'Here is the thing'] },
+    },
+    prominence_scores: {
+      vocabulary: 0.8,
+      tone: 0.9,
+      humor: 0.5,
+    },
+    trigger: 'initial_analysis',
+    model_used: 'gpt-4o',
     created_at: NOW,
     ...overrides,
   };
