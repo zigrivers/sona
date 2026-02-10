@@ -32,6 +32,7 @@ describe('CloneResponseSchema', () => {
     sample_count: 5,
     created_at: NOW,
     updated_at: NOW,
+    deleted_at: null,
   };
 
   it('parses valid clone data', () => {
@@ -83,6 +84,7 @@ describe('CloneListResponseSchema', () => {
           sample_count: 0,
           created_at: NOW,
           updated_at: NOW,
+          deleted_at: null,
         },
       ],
       total: 1,

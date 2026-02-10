@@ -7,6 +7,10 @@ export const cloneHandlers = [
     return HttpResponse.json({ items: [], total: 0 });
   }),
 
+  http.get('/api/clones/deleted', () => {
+    return HttpResponse.json({ items: [], total: 0 });
+  }),
+
   http.get('/api/clones/:id', ({ params }) => {
     return HttpResponse.json({
       id: params.id,
@@ -21,6 +25,7 @@ export const cloneHandlers = [
       sample_count: 0,
       created_at: NOW,
       updated_at: NOW,
+      deleted_at: null,
     });
   }),
 
@@ -40,6 +45,7 @@ export const cloneHandlers = [
         sample_count: 0,
         created_at: NOW,
         updated_at: NOW,
+        deleted_at: null,
       },
       { status: 201 }
     );
@@ -60,10 +66,29 @@ export const cloneHandlers = [
       sample_count: 0,
       created_at: NOW,
       updated_at: NOW,
+      deleted_at: null,
     });
   }),
 
   http.delete('/api/clones/:id', () => {
     return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('/api/clones/:id/restore', ({ params }) => {
+    return HttpResponse.json({
+      id: params.id,
+      name: 'Restored Clone',
+      description: null,
+      tags: [],
+      type: 'original',
+      is_demo: false,
+      is_hidden: false,
+      avatar_path: null,
+      confidence_score: 0,
+      sample_count: 0,
+      created_at: NOW,
+      updated_at: NOW,
+      deleted_at: null,
+    });
   }),
 ];

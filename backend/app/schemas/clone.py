@@ -33,6 +33,7 @@ class CloneResponse(BaseModel):
     sample_count: int
     created_at: datetime
     updated_at: datetime
+    deleted_at: datetime | None
 
 
 class CloneListResponse(BaseModel):

@@ -34,6 +34,7 @@ class VoiceClone(Base):
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
     )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
 
     # Relationships
     samples: Mapped[list[WritingSample]] = relationship(

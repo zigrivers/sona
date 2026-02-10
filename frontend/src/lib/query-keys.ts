@@ -5,6 +5,7 @@ export const queryKeys = {
   clones: {
     list: (filters?: unknown) => ['clones', 'list', filters] as const,
     detail: (id: string) => ['clones', 'detail', id] as const,
+    deleted: () => ['clones', 'deleted'] as const,
   },
 
   content: {

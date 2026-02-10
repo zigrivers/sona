@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 
 import { CloneCard } from '@/components/clones/CloneCard';
 import { CloneListFilters, type CloneTypeFilter } from '@/components/clones/CloneListFilters';
+import { DeletedClones } from '@/components/clones/DeletedClones';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -155,6 +156,8 @@ export function ClonesPage() {
           </Button>
         </EmptyState>
       )}
+
+      <DeletedClones />
     </div>
   );
 }

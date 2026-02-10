@@ -1,5 +1,7 @@
 """Tests for clone API endpoints."""
 
+from datetime import UTC, datetime
+
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,8 +15,9 @@ async def _create_clone(
     name: str = "Test Clone",
     is_demo: bool = False,
     clone_type: str = "original",
+    deleted_at: datetime | None = None,
 ) -> VoiceClone:
-    clone = VoiceClone(name=name, is_demo=is_demo, type=clone_type)
+    clone = VoiceClone(name=name, is_demo=is_demo, type=clone_type, deleted_at=deleted_at)
     session.add(clone)
     await session.commit()
     return clone
@@ -106,12 +109,22 @@ async def test_update_clone_endpoint(client: AsyncClient, session: AsyncSession)
 
 
 async def test_delete_clone_endpoint(client: AsyncClient, session: AsyncSession) -> None:
-    """DELETE /api/clones/{id} should return 204."""
+    """DELETE /api/clones/{id} should return 204 and soft-delete the clone."""
     clone = await _create_clone(session, name="Delete Me")
+    clone_id = clone.id
 
-    response = await client.delete(f"/api/clones/{clone.id}")
+    response = await client.delete(f"/api/clones/{clone_id}")
 
     assert response.status_code == 204
+
+    # Clone should still exist in DB with deleted_at set
+    from sqlalchemy import select
+
+    session.expire_all()
+    result = await session.execute(select(VoiceClone).where(VoiceClone.id == clone_id))
+    db_clone = result.scalar_one_or_none()
+    assert db_clone is not None
+    assert db_clone.deleted_at is not None
 
 
 async def test_delete_demo_clone_rejected(client: AsyncClient, session: AsyncSession) -> None:
@@ -146,3 +159,53 @@ async def test_confidence_score_nonzero_with_samples(
     data = response.json()
     assert data["confidence_score"] > 0
     assert data["sample_count"] == 1
+
+
+# ── Soft-Delete API Tests ──────────────────────────────────────────────
+
+
+async def test_restore_clone_returns_200(client: AsyncClient, session: AsyncSession) -> None:
+    """POST /api/clones/{id}/restore should restore a soft-deleted clone."""
+    clone = await _create_clone(session, name="Restore Me", deleted_at=datetime.now(UTC))
+
+    response = await client.post(f"/api/clones/{clone.id}/restore")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["name"] == "Restore Me"
+    assert data["deleted_at"] is None
+
+
+async def test_restore_not_found_404(client: AsyncClient) -> None:
+    """POST /api/clones/{id}/restore with missing ID should return 404."""
+    response = await client.post("/api/clones/nonexistent/restore")
+
+    assert response.status_code == 404
+
+
+async def test_list_deleted_returns_soft_deleted(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    """GET /api/clones/deleted should return soft-deleted clones."""
+    await _create_clone(session, name="Active Clone")
+    await _create_clone(session, name="Deleted Clone", deleted_at=datetime.now(UTC))
+
+    response = await client.get("/api/clones/deleted")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["name"] == "Deleted Clone"
+
+
+async def test_deleted_clone_excluded_from_list(client: AsyncClient, session: AsyncSession) -> None:
+    """GET /api/clones should not include soft-deleted clones."""
+    await _create_clone(session, name="Active")
+    await _create_clone(session, name="Deleted", deleted_at=datetime.now(UTC))
+
+    response = await client.get("/api/clones")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert data["items"][0]["name"] == "Active"

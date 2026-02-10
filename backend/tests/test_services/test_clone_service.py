@@ -1,9 +1,11 @@
 """Tests for clone CRUD service."""
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.exceptions import CloneNotFoundError, DemoCloneReadonlyError
+from app.exceptions import CloneNotFoundError, CloneSoftDeletedError, DemoCloneReadonlyError
 from app.models.clone import VoiceClone
 from app.schemas.clone import CloneCreate, CloneUpdate
 from app.services.clone_service import CloneService
@@ -116,8 +118,8 @@ async def test_update_clone_partial(service: CloneService, session: AsyncSession
     assert updated.description == "Added desc"
 
 
-async def test_delete_clone_removes_cascade(service: CloneService, session: AsyncSession) -> None:
-    """delete() should remove the clone and cascade-delete children."""
+async def test_delete_clone_soft_deletes(service: CloneService, session: AsyncSession) -> None:
+    """delete() should soft-delete the clone (hidden from get_by_id)."""
     clone = await _create_clone(session, name="Delete Me")
     clone_id = clone.id
 
@@ -133,3 +135,106 @@ async def test_delete_demo_clone_rejected(service: CloneService, session: AsyncS
 
     with pytest.raises(DemoCloneReadonlyError):
         await service.delete(clone.id)
+
+
+# ── Soft-Delete Tests ──────────────────────────────────────────────
+
+
+async def test_soft_delete_sets_deleted_at(service: CloneService, session: AsyncSession) -> None:
+    """delete() should set deleted_at instead of hard-deleting."""
+    clone = await _create_clone(session, name="Soft Delete Me")
+    clone_id = clone.id
+
+    await service.delete(clone_id)
+
+    # Clone should still exist in DB with deleted_at set
+    from sqlalchemy import select
+
+    result = await session.execute(select(VoiceClone).where(VoiceClone.id == clone_id))
+    db_clone = result.scalar_one_or_none()
+    assert db_clone is not None
+    assert db_clone.deleted_at is not None
+
+
+async def test_soft_deleted_excluded_from_list(
+    service: CloneService, session: AsyncSession
+) -> None:
+    """list() should not return soft-deleted clones."""
+    await _create_clone(session, name="Active")
+    deleted = await _create_clone(session, name="Deleted")
+    deleted.deleted_at = datetime.now(UTC)
+    await session.flush()
+
+    items, total = await service.list()
+
+    assert total == 1
+    assert items[0].name == "Active"
+
+
+async def test_soft_deleted_excluded_from_get(service: CloneService, session: AsyncSession) -> None:
+    """get_by_id() should raise CloneNotFoundError for soft-deleted clones."""
+    clone = await _create_clone(session, name="Deleted Clone")
+    clone.deleted_at = datetime.now(UTC)
+    await session.flush()
+
+    with pytest.raises(CloneNotFoundError):
+        await service.get_by_id(clone.id)
+
+
+async def test_restore_clears_deleted_at(service: CloneService, session: AsyncSession) -> None:
+    """restore() should clear deleted_at and return the clone."""
+    clone = await _create_clone(session, name="Restore Me")
+    clone.deleted_at = datetime.now(UTC)
+    await session.flush()
+
+    restored = await service.restore(clone.id)
+
+    assert restored.deleted_at is None
+    assert restored.name == "Restore Me"
+
+
+async def test_restore_nonexistent_raises(service: CloneService) -> None:
+    """restore() should raise CloneNotFoundError for missing ID."""
+    with pytest.raises(CloneNotFoundError):
+        await service.restore("nonexistent-id")
+
+
+async def test_restore_active_clone_raises(service: CloneService, session: AsyncSession) -> None:
+    """restore() should raise CloneSoftDeletedError for a clone that isn't deleted."""
+    clone = await _create_clone(session, name="Active Clone")
+
+    with pytest.raises(CloneSoftDeletedError):
+        await service.restore(clone.id)
+
+
+async def test_list_deleted_returns_soft_deleted(
+    service: CloneService, session: AsyncSession
+) -> None:
+    """list_deleted() should return only soft-deleted clones within 30-day window."""
+    await _create_clone(session, name="Active")
+    deleted = await _create_clone(session, name="Recently Deleted")
+    deleted.deleted_at = datetime.now(UTC)
+    await session.flush()
+
+    deleted_items = await service.list_deleted()
+
+    assert len(deleted_items) == 1
+    assert deleted_items[0].name == "Recently Deleted"
+
+
+async def test_purge_expired_hard_deletes(service: CloneService, session: AsyncSession) -> None:
+    """purge_expired() should hard-delete clones older than 30 days."""
+    recent = await _create_clone(session, name="Recent Delete")
+    recent.deleted_at = datetime.now(UTC) - timedelta(days=5)
+
+    expired = await _create_clone(session, name="Expired Delete")
+    expired.deleted_at = datetime.now(UTC) - timedelta(days=31)
+    await session.flush()
+
+    count = await service.purge_expired()
+
+    assert count == 1
+    # Recent should still exist
+    deleted_items = await service.list_deleted()
+    assert len(deleted_items) == 1
+    assert deleted_items[0].name == "Recent Delete"

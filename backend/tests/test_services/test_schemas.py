@@ -80,11 +80,13 @@ def test_clone_response_from_orm() -> None:
         "sample_count": 0,
         "created_at": "2026-01-01T00:00:00",
         "updated_at": "2026-01-01T00:00:00",
+        "deleted_at": None,
     }
     response = CloneResponse.model_validate(data)
     assert response.id == "abc123"
     assert response.name == "Test Clone"
     assert response.type == "original"
+    assert response.deleted_at is None
 
 
 # --- CloneListResponse ---
