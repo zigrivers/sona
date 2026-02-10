@@ -78,7 +78,7 @@ export function DnaTimeline({ versions }: DnaTimelineProps) {
             </div>
 
             {/* Content */}
-            <div className="flex-1 -mt-1 space-y-1">
+            <div className="-mt-1 flex-1 space-y-1">
               <div className="flex items-center gap-2">
                 <span data-testid="timeline-version" className="text-sm font-medium">
                   v{version.version_number}
