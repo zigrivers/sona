@@ -29,6 +29,13 @@ MODEL_PRICING: dict[str, dict[str, float | int]] = {
     "gemini-2.0-flash": {"input": 0.10, "output": 0.40, "context_window": 1_000_000},
 }
 
+# Available models per provider
+PROVIDER_MODELS: dict[str, list[str]] = {
+    "openai": ["gpt-4o", "gpt-4o-mini"],
+    "anthropic": ["claude-sonnet-4-5-20250929", "claude-haiku-4-5-20251001"],
+    "google": ["gemini-2.0-flash"],
+}
+
 # Version retention limits
 MAX_DNA_VERSIONS = 10
 MAX_METHODOLOGY_VERSIONS = 10
