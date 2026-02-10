@@ -147,6 +147,105 @@ describe('CreatePage', () => {
     expect(button).not.toBeDisabled();
   });
 
+  it('shows loading state during generation', async () => {
+    mockClones();
+    const user = userEvent.setup();
+    renderWithProviders(<CreatePage />);
+
+    // Select clone
+    const trigger = await screen.findByRole('button', { name: /select a voice/i });
+    await user.click(trigger);
+    await waitFor(() => {
+      expect(screen.getByText('Marketing Voice')).toBeInTheDocument();
+    });
+    await user.click(screen.getByText('Marketing Voice'));
+
+    // Type input
+    const textarea = screen.getByPlaceholderText(/describe the content/i);
+    await user.type(textarea, 'Write a post');
+
+    // Select platform
+    await user.click(screen.getByRole('checkbox', { name: /linkedin/i }));
+
+    // Use a delayed handler to catch the loading state
+    server.use(
+      http.post('/api/content/generate', async () => {
+        await new Promise((r) => setTimeout(r, 100));
+        return HttpResponse.json(
+          {
+            items: [
+              {
+                id: 'content-linkedin',
+                clone_id: 'c1',
+                platform: 'linkedin',
+                status: 'draft',
+                content_current: 'Generated.',
+                content_original: 'Generated.',
+                input_text: 'Write a post',
+                generation_properties: null,
+                authenticity_score: null,
+                score_dimensions: null,
+                topic: null,
+                campaign: null,
+                tags: [],
+                word_count: 1,
+                char_count: 10,
+                preset_id: null,
+                created_at: '2026-01-15T10:00:00Z',
+                updated_at: '2026-01-15T10:00:00Z',
+              },
+            ],
+          },
+          { status: 201 }
+        );
+      })
+    );
+
+    // Click generate
+    await user.click(screen.getByRole('button', { name: /generate/i }));
+
+    // Should show generating state
+    await waitFor(() => {
+      expect(screen.getByText(/generating content/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows review panel after generation completes', async () => {
+    mockClones();
+
+    // Reset store so no clone is preselected
+    const { useGeneratorStore } = await import('@/stores/generator-store');
+    useGeneratorStore.setState({ lastUsedCloneId: null, lastUsedProperties: null });
+
+    const user = userEvent.setup();
+    renderWithProviders(<CreatePage />);
+
+    // Select clone
+    const trigger = await screen.findByRole('button', { name: /select a voice/i });
+    await user.click(trigger);
+    await waitFor(() => {
+      expect(screen.getByText('Marketing Voice')).toBeInTheDocument();
+    });
+    await user.click(screen.getByText('Marketing Voice'));
+
+    // Type input
+    const textarea = screen.getByPlaceholderText(/describe the content/i);
+    await user.type(textarea, 'Write a post');
+
+    // Select platforms
+    await user.click(screen.getByRole('checkbox', { name: /linkedin/i }));
+    await user.click(screen.getByRole('checkbox', { name: /twitter/i }));
+
+    // Click generate
+    await user.click(screen.getByRole('button', { name: /generate/i }));
+
+    // Should show review panel with tabs
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /linkedin/i })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /twitter/i })).toBeInTheDocument();
+    });
+  });
+
   it('last used clone preselected', async () => {
     mockClones();
 
