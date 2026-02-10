@@ -144,4 +144,9 @@ describe('PlatformTab', () => {
     const button = screen.getByRole('button', { name: /check authenticity/i });
     expect(button).toBeDisabled();
   });
+
+  it('shows export menu button', () => {
+    render(<PlatformTab {...defaultProps} />);
+    expect(screen.getByRole('button', { name: /export/i })).toBeInTheDocument();
+  });
 });
