@@ -19,6 +19,7 @@ import { type PlatformKey, PLATFORMS } from '@/types/platforms';
 
 import { AuthenticityScore } from './AuthenticityScore';
 import { DimensionBreakdown } from './DimensionBreakdown';
+import { ExportMenu } from './ExportMenu';
 
 interface PlatformTabProps {
   content: ContentResponse;
@@ -138,6 +139,7 @@ export function PlatformTab({
           {isScoring ? <Loader2 className="size-4 animate-spin" /> : <Shield className="size-4" />}
           Check Authenticity
         </Button>
+        <ExportMenu items={[content]} />
       </div>
     </div>
   );
