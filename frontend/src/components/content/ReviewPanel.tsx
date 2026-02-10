@@ -147,11 +147,7 @@ export function ReviewPanel({ items, generationParams }: ReviewPanelProps) {
       </TabsList>
 
       <div className="flex items-center gap-2 py-2">
-        <Switch
-          id="show-input"
-          checked={showInputPanel}
-          onCheckedChange={setShowInputPanel}
-        />
+        <Switch id="show-input" checked={showInputPanel} onCheckedChange={setShowInputPanel} />
         <Label htmlFor="show-input">Show Input</Label>
       </div>
 

@@ -5,7 +5,12 @@ import { useUIStore } from './ui-store';
 describe('useUIStore', () => {
   beforeEach(() => {
     // Reset store state before each test
-    useUIStore.setState({ theme: 'system', sidebarCollapsed: false, hideDemoClones: false, showInputPanel: false });
+    useUIStore.setState({
+      theme: 'system',
+      sidebarCollapsed: false,
+      hideDemoClones: false,
+      showInputPanel: false,
+    });
     document.documentElement.classList.remove('dark');
     localStorage.clear();
   });

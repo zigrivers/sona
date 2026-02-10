@@ -21,7 +21,9 @@ export function BeforeAfterView({
     <div className="grid grid-cols-2 gap-4">
       <div>
         <p className="text-muted-foreground mb-1 text-xs font-medium">Original Input</p>
-        <div className="bg-muted whitespace-pre-wrap rounded-md border p-3 text-sm">{inputText}</div>
+        <div className="bg-muted rounded-md border p-3 text-sm whitespace-pre-wrap">
+          {inputText}
+        </div>
       </div>
       <div>
         <p className="text-muted-foreground mb-1 text-xs font-medium">Generated Output</p>
