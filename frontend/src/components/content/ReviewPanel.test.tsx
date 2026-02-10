@@ -80,6 +80,35 @@ describe('ReviewPanel', () => {
     });
   });
 
+  it('Check Authenticity triggers scoring and shows result', async () => {
+    let capturedUrl = '';
+    server.use(
+      http.post('/api/content/:id/score', ({ request }) => {
+        capturedUrl = new URL(request.url).pathname;
+        return HttpResponse.json({
+          overall_score: 82,
+          dimensions: [
+            { name: 'Vocabulary', score: 85, feedback: 'Great' },
+            { name: 'Tone', score: 60, feedback: 'Needs work' },
+          ],
+        });
+      })
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ReviewPanel items={items} generationParams={generationParams} />);
+
+    await user.click(screen.getByRole('button', { name: /check authenticity/i }));
+
+    await waitFor(() => {
+      expect(capturedUrl).toBe('/api/content/c-1/score');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('82')).toBeInTheDocument();
+    });
+  });
+
   it('edited content preserved when switching tabs', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ReviewPanel items={items} generationParams={generationParams} />);
