@@ -28,6 +28,10 @@ export const queryKeys = {
     versions: (key: string) => ['methodology', key, 'versions'] as const,
   },
 
+  presets: {
+    list: () => ['presets', 'list'] as const,
+  },
+
   providers: {
     all: () => ['providers'] as const,
   },
