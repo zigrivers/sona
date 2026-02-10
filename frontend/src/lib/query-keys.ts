@@ -22,6 +22,8 @@ export const queryKeys = {
 
   methodology: {
     all: () => ['methodology'] as const,
+    section: (key: string) => ['methodology', key] as const,
+    versions: (key: string) => ['methodology', key, 'versions'] as const,
   },
 
   providers: {

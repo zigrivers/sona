@@ -1,4 +1,10 @@
-import type { CloneResponse, ContentResponse, SampleResponse } from '@/types/api';
+import type {
+  CloneResponse,
+  ContentResponse,
+  MethodologyResponse,
+  MethodologyVersionResponse,
+  SampleResponse,
+} from '@/types/api';
 
 let counter = 0;
 
@@ -61,6 +67,35 @@ export function buildSample(overrides: Partial<SampleResponse> = {}): SampleResp
     source_type: 'paste',
     source_url: null,
     source_filename: null,
+    created_at: NOW,
+    ...overrides,
+  };
+}
+
+export function buildMethodology(
+  overrides: Partial<MethodologyResponse> = {}
+): MethodologyResponse {
+  counter += 1;
+  return {
+    id: `method-${counter}`,
+    section_key: 'voice_cloning',
+    current_content: 'Default methodology instructions.',
+    created_at: NOW,
+    updated_at: NOW,
+    ...overrides,
+  };
+}
+
+export function buildMethodologyVersion(
+  overrides: Partial<MethodologyVersionResponse> = {}
+): MethodologyVersionResponse {
+  counter += 1;
+  return {
+    id: `method-ver-${counter}`,
+    settings_id: 'method-1',
+    version_number: 1,
+    content: 'Version content.',
+    trigger: 'manual_edit',
     created_at: NOW,
     ...overrides,
   };
