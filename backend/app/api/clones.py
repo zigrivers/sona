@@ -43,6 +43,7 @@ def _to_response(clone: VoiceClone) -> CloneResponse:
             "updated_at": clone.updated_at,
             "sample_count": len(clone.samples),
             "confidence_score": calculate_confidence(clone),
+            "deleted_at": clone.deleted_at,
         }
     )
 
@@ -83,6 +84,16 @@ async def merge_clones(data: MergeRequest, session: Session) -> CloneResponse:
 
 
 # ── Clone CRUD ────────────────────────────────────────────────
+
+
+@router.get("/deleted")
+async def list_deleted_clones(session: Session) -> CloneListResponse:
+    service = CloneService(session)
+    items = await service.list_deleted()
+    return CloneListResponse(
+        items=[_to_response(c) for c in items],
+        total=len(items),
+    )
 
 
 @router.post("", status_code=201)
@@ -129,6 +140,14 @@ async def delete_clone(clone_id: str, session: Session) -> Response:
     await service.delete(clone_id)
     await session.commit()
     return Response(status_code=204)
+
+
+@router.post("/{clone_id}/restore")
+async def restore_clone(clone_id: str, session: Session) -> CloneResponse:
+    service = CloneService(session)
+    clone = await service.restore(clone_id)
+    await session.commit()
+    return _to_response(clone)
 
 
 # ── DNA Analysis Endpoints ─────────────────────────────────────

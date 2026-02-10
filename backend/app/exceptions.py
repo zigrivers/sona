@@ -108,3 +108,11 @@ class DemoCloneReadonlyError(SonaError):
             detail=f"Demo clone '{clone_id}' cannot be modified or deleted",
             code="DEMO_CLONE_READONLY",
         )
+
+
+class CloneSoftDeletedError(SonaError):
+    def __init__(self, clone_id: str) -> None:
+        super().__init__(
+            detail=f"Voice clone '{clone_id}' has been deleted",
+            code="CLONE_SOFT_DELETED",
+        )

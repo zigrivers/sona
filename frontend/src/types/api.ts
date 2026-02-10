@@ -20,6 +20,7 @@ export const CloneResponseSchema = z.object({
   sample_count: z.number().int(),
   created_at: z.string(),
   updated_at: z.string(),
+  deleted_at: z.string().nullable(),
 });
 
 export type CloneResponse = z.infer<typeof CloneResponseSchema>;

@@ -10,6 +10,7 @@ from app.config import PROJECT_ROOT
 from app.database import Base, async_session, engine
 from app.exceptions import SonaError
 from app.seed import seed_demo_clones, seed_methodology_defaults
+from app.services.clone_service import CloneService
 
 STATUS_MAP: dict[str, int] = {
     "CLONE_NOT_FOUND": 404,
@@ -24,6 +25,7 @@ STATUS_MAP: dict[str, int] = {
     "LLM_QUOTA_ERROR": 402,
     "VALIDATION_ERROR": 422,
     "DEMO_CLONE_READONLY": 400,
+    "CLONE_SOFT_DELETED": 410,
 }
 
 
@@ -38,6 +40,11 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
     async with async_session() as session:
         await seed_methodology_defaults(session)
         await seed_demo_clones(session)
+        await session.commit()
+
+    async with async_session() as session:
+        service = CloneService(session)
+        await service.purge_expired()
         await session.commit()
 
     yield

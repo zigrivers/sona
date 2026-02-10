@@ -29,6 +29,7 @@ export function buildClone(overrides: Partial<CloneResponse> = {}): CloneRespons
     sample_count: 0,
     created_at: NOW,
     updated_at: NOW,
+    deleted_at: null,
     ...overrides,
   };
 }

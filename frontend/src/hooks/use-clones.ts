@@ -52,6 +52,25 @@ export function useDeleteClone() {
     mutationFn: (id: string) => api.delete(`/api/clones/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.clones.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.clones.deleted() });
+    },
+  });
+}
+
+export function useDeletedClones() {
+  return useQuery({
+    queryKey: queryKeys.clones.deleted(),
+    queryFn: () => api.get<CloneListResponse>('/api/clones/deleted'),
+  });
+}
+
+export function useRestoreClone() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post<CloneResponse>(`/api/clones/${id}/restore`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.clones.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.clones.deleted() });
     },
   });
 }
