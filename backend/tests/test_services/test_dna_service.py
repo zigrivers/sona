@@ -241,6 +241,181 @@ class TestGetCurrentDNA:
         assert result is None
 
 
+class TestManualEdit:
+    async def test_creates_version_with_manual_edit_trigger(self, session: AsyncSession) -> None:
+        """manual_edit creates a new version with trigger='manual_edit'."""
+        clone = await _create_clone(session, with_samples=False)
+        # Seed an initial DNA version
+        v1 = VoiceDNAVersion(
+            clone_id=clone.id,
+            version_number=1,
+            data={"vocabulary": {"level": "basic"}},
+            prominence_scores={"vocabulary": 50},
+            trigger="initial_analysis",
+            model_used="gpt-4o",
+        )
+        session.add(v1)
+        await session.flush()
+
+        svc = DNAService(session)
+        new_data = {"vocabulary": {"level": "advanced"}}
+        new_scores = {"vocabulary": 90}
+        result = await svc.manual_edit(clone.id, data=new_data, prominence_scores=new_scores)
+
+        assert result.version_number == 2
+        assert result.trigger == "manual_edit"
+        assert result.data == new_data
+        assert result.prominence_scores == new_scores
+        assert result.model_used == "manual"
+
+    async def test_manual_edit_no_existing_dna_raises(self, session: AsyncSession) -> None:
+        """manual_edit raises ValueError when clone has no DNA to edit."""
+        clone = await _create_clone(session, with_samples=False)
+
+        svc = DNAService(session)
+        with pytest.raises(ValueError, match="no existing DNA"):
+            await svc.manual_edit(clone.id, data={"vocabulary": {}})
+
+
+class TestRevert:
+    async def test_revert_copies_old_dna(self, session: AsyncSession) -> None:
+        """revert creates a new version copying old DNA data."""
+        clone = await _create_clone(session, with_samples=False)
+        v1 = VoiceDNAVersion(
+            clone_id=clone.id,
+            version_number=1,
+            data={"vocabulary": {"level": "basic"}},
+            prominence_scores={"vocabulary": 50},
+            trigger="initial_analysis",
+            model_used="gpt-4o",
+        )
+        v2 = VoiceDNAVersion(
+            clone_id=clone.id,
+            version_number=2,
+            data={"vocabulary": {"level": "advanced"}},
+            prominence_scores={"vocabulary": 90},
+            trigger="regeneration",
+            model_used="gpt-4o",
+        )
+        session.add_all([v1, v2])
+        await session.flush()
+
+        svc = DNAService(session)
+        result = await svc.revert(clone.id, target_version=1)
+
+        assert result.version_number == 3
+        assert result.trigger == "revert"
+        assert result.data == {"vocabulary": {"level": "basic"}}
+        assert result.prominence_scores == {"vocabulary": 50}
+        assert result.model_used == v1.model_used
+
+    async def test_revert_missing_version_raises(self, session: AsyncSession) -> None:
+        """revert raises ValueError when target version doesn't exist."""
+        clone = await _create_clone(session, with_samples=False)
+        v1 = VoiceDNAVersion(
+            clone_id=clone.id,
+            version_number=1,
+            data={"vocabulary": {}},
+            trigger="initial_analysis",
+            model_used="gpt-4o",
+        )
+        session.add(v1)
+        await session.flush()
+
+        svc = DNAService(session)
+        with pytest.raises(ValueError, match="Version 99 not found"):
+            await svc.revert(clone.id, target_version=99)
+
+    async def test_revert_is_non_destructive(self, session: AsyncSession) -> None:
+        """revert does not delete the original versions."""
+        clone = await _create_clone(session, with_samples=False)
+        for i in range(1, 3):
+            v = VoiceDNAVersion(
+                clone_id=clone.id,
+                version_number=i,
+                data={"version": i},
+                trigger="analysis",
+                model_used="gpt-4o",
+            )
+            session.add(v)
+        await session.flush()
+
+        svc = DNAService(session)
+        await svc.revert(clone.id, target_version=1)
+
+        versions = await svc.list_versions(clone.id)
+        assert len(versions) == 3  # Original 2 + revert = 3
+
+
+class TestPruning:
+    async def test_prune_oldest_at_11_versions(self, session: AsyncSession) -> None:
+        """Creating an 11th version prunes the oldest, leaving 10."""
+        clone = await _create_clone(session, with_samples=False)
+        for i in range(1, 12):
+            v = VoiceDNAVersion(
+                clone_id=clone.id,
+                version_number=i,
+                data={"version": i},
+                trigger="analysis",
+                model_used="gpt-4o",
+            )
+            session.add(v)
+        await session.flush()
+
+        svc = DNAService(session)
+        await svc._prune_versions(clone.id)
+
+        versions = await svc.list_versions(clone.id)
+        assert len(versions) == 10
+        assert versions[-1].version_number == 2  # version 1 was pruned
+
+    async def test_no_prune_under_10_versions(self, session: AsyncSession) -> None:
+        """No pruning occurs when there are fewer than 10 versions."""
+        clone = await _create_clone(session, with_samples=False)
+        for i in range(1, 6):
+            v = VoiceDNAVersion(
+                clone_id=clone.id,
+                version_number=i,
+                data={"version": i},
+                trigger="analysis",
+                model_used="gpt-4o",
+            )
+            session.add(v)
+        await session.flush()
+
+        svc = DNAService(session)
+        await svc._prune_versions(clone.id)
+
+        versions = await svc.list_versions(clone.id)
+        assert len(versions) == 5
+
+    async def test_analyze_triggers_pruning(self, session: AsyncSession) -> None:
+        """analyze auto-prunes when version count exceeds limit."""
+        clone = await _create_clone(session)
+        await _seed_methodology(session)
+        # Seed 10 existing versions
+        for i in range(1, 11):
+            v = VoiceDNAVersion(
+                clone_id=clone.id,
+                version_number=i,
+                data={"version": i},
+                trigger="analysis",
+                model_used="gpt-4o",
+            )
+            session.add(v)
+        await session.flush()
+
+        mock_provider = AsyncMock()
+        mock_provider.complete = AsyncMock(return_value=MOCK_DNA_RESPONSE)
+
+        svc = DNAService(session)
+        dna = await svc.analyze(clone.id, mock_provider, model="gpt-4o")
+
+        assert dna.version_number == 11
+        versions = await svc.list_versions(clone.id)
+        assert len(versions) == 10
+
+
 class TestListVersions:
     async def test_returns_versions_descending(self, session: AsyncSession) -> None:
         """list_versions returns versions ordered by version_number desc."""

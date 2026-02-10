@@ -1,6 +1,6 @@
 """Clone CRUD and DNA analysis API routes."""
 
-from typing import Annotated, cast
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
@@ -93,6 +93,11 @@ class AnalyzeRequest(BaseModel):
     model: str = Field(min_length=1)
 
 
+class DNAEditRequest(BaseModel):
+    data: dict[str, Any]
+    prominence_scores: dict[str, Any] | None = None
+
+
 @router.post("/{clone_id}/analyze", status_code=201)
 async def analyze_clone(
     clone_id: str,
@@ -113,6 +118,25 @@ async def analyze_clone(
     return DNAResponse.model_validate(dna, from_attributes=True)
 
 
+@router.put("/{clone_id}/dna")
+async def edit_dna(
+    clone_id: str,
+    data: DNAEditRequest,
+    session: Session,
+) -> DNAResponse:
+    svc = DNAService(session)
+    try:
+        dna = await svc.manual_edit(
+            clone_id,
+            data=data.data,
+            prominence_scores=data.prominence_scores,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await session.commit()
+    return DNAResponse.model_validate(dna, from_attributes=True)
+
+
 @router.get("/{clone_id}/dna")
 async def get_dna(clone_id: str, session: Session) -> DNAResponse:
     svc = DNAService(session)
@@ -129,3 +153,18 @@ async def list_dna_versions(clone_id: str, session: Session) -> DNAVersionListRe
     return DNAVersionListResponse(
         items=[DNAVersionResponse.model_validate(v, from_attributes=True) for v in versions],
     )
+
+
+@router.post("/{clone_id}/dna/revert/{version}", status_code=201)
+async def revert_dna(
+    clone_id: str,
+    version: int,
+    session: Session,
+) -> DNAResponse:
+    svc = DNAService(session)
+    try:
+        dna = await svc.revert(clone_id, target_version=version)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await session.commit()
+    return DNAResponse.model_validate(dna, from_attributes=True)
