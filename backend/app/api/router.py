@@ -2,9 +2,11 @@
 
 from fastapi import APIRouter
 
+from app.api.clones import router as clones_router
 from app.api.methodology import router as methodology_router
 
 api_router = APIRouter(prefix="/api")
+api_router.include_router(clones_router)
 api_router.include_router(methodology_router)
 
 
