@@ -16,7 +16,7 @@ describe('MSW server', () => {
   it('should intercept GET /api/providers', async () => {
     const response = await fetch('/api/providers');
     const data = await response.json();
-    expect(data).toHaveLength(2);
+    expect(data).toHaveLength(3);
     expect(data[0].name).toBe('openai');
   });
 
