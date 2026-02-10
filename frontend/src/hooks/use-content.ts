@@ -1,8 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/query-keys';
-import type { AuthenticityScoreResponse, ContentListResponse, ContentResponse } from '@/types/api';
+import type {
+  AuthenticityScoreResponse,
+  ContentListResponse,
+  ContentResponse,
+  ContentVersionListResponse,
+} from '@/types/api';
 
 interface ContentListParams {
   sort?: string;
@@ -114,6 +120,30 @@ export function useRegenerateContent() {
       api.post<GenerateContentResponse>('/api/content/generate', body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.content.list() });
+    },
+  });
+}
+
+export function useContentVersions(contentId: string) {
+  return useQuery({
+    queryKey: queryKeys.content.versions(contentId),
+    queryFn: () => api.get<ContentVersionListResponse>(`/api/content/${contentId}/versions`),
+  });
+}
+
+export function useRestoreContentVersion(contentId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (version: number) =>
+      api.post<ContentResponse>(`/api/content/${contentId}/restore/${version}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.versions(contentId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.detail(contentId) });
+      toast.success('Version restored');
+    },
+    onError: () => {
+      toast.error('Failed to restore version');
     },
   });
 }

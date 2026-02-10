@@ -1,6 +1,7 @@
 import type {
   CloneResponse,
   ContentResponse,
+  ContentVersionResponse,
   DNAResponse,
   MethodologyResponse,
   MethodologyVersionResponse,
@@ -80,6 +81,21 @@ export function buildSample(overrides: Partial<SampleResponse> = {}): SampleResp
     source_type: 'paste',
     source_url: null,
     source_filename: null,
+    created_at: NOW,
+    ...overrides,
+  };
+}
+
+export function buildContentVersion(
+  overrides: Partial<ContentVersionResponse> = {}
+): ContentVersionResponse {
+  counter += 1;
+  return {
+    id: `content-ver-${counter}`,
+    version_number: 1,
+    content_text: 'Version content text.',
+    trigger: 'generation',
+    word_count: 3,
     created_at: NOW,
     ...overrides,
   };

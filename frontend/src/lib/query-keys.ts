@@ -10,6 +10,7 @@ export const queryKeys = {
   content: {
     list: (filters?: unknown) => ['content', 'list', filters] as const,
     detail: (id: string) => ['content', 'detail', id] as const,
+    versions: (id: string) => ['content', id, 'versions'] as const,
   },
 
   samples: {
