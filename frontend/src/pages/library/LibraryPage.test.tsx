@@ -77,10 +77,11 @@ describe('LibraryPage', () => {
       expect(screen.getByText('Short content for LinkedIn.')).toBeInTheDocument();
     });
     expect(screen.getByText('Marketing Voice')).toBeInTheDocument();
-    expect(screen.getByText('LinkedIn')).toBeInTheDocument();
+    // Platform labels appear in both filter checkboxes and table cells
+    expect(screen.getAllByText('LinkedIn').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Tweet text here.')).toBeInTheDocument();
     expect(screen.getByText('Technical Writer')).toBeInTheDocument();
-    expect(screen.getByText('Twitter/X')).toBeInTheDocument();
+    expect(screen.getAllByText('Twitter/X').length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders status badges with correct text', async () => {
@@ -159,5 +160,107 @@ describe('LibraryPage', () => {
       const truncated = `${'A'.repeat(100)}…`;
       expect(screen.getByText(truncated)).toBeInTheDocument();
     });
+  });
+
+  it('renders status tabs', async () => {
+    mockContentAndClones();
+    renderWithProviders(<LibraryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Short content for LinkedIn.')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('tab', { name: /all/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /draft/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /review/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /approved/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /published/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /archived/i })).toBeInTheDocument();
+  });
+
+  it('status tab click sends status filter to API', async () => {
+    let lastRequestUrl = '';
+    server.use(
+      http.get('/api/content', ({ request }) => {
+        lastRequestUrl = request.url;
+        return HttpResponse.json({ items: [], total: 0 });
+      }),
+      http.get('/api/clones', () => {
+        return HttpResponse.json({
+          items: [buildClone({ id: 'clone-1', name: 'Marketing Voice' })],
+          total: 1,
+        });
+      })
+    );
+    const user = userEvent.setup();
+
+    // Render at /library?status=draft to start with filters active
+    // so it doesn't hit the "no content yet" empty state
+    renderWithProviders(
+      <Routes>
+        <Route path="/library" element={<LibraryPage />} />
+      </Routes>,
+      { initialEntries: ['/library?status=draft'] }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/no results match filters/i)).toBeInTheDocument();
+    });
+
+    // Click the "Published" tab
+    await user.click(screen.getByRole('tab', { name: /published/i }));
+
+    await waitFor(() => {
+      expect(lastRequestUrl).toContain('status=published');
+    });
+  });
+
+  it('checkbox selection shows bulk action bar', async () => {
+    mockContentAndClones();
+    const user = userEvent.setup();
+    renderWithProviders(<LibraryPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Short content for LinkedIn.')).toBeInTheDocument();
+    });
+
+    // Bulk actions bar should not be visible initially
+    expect(screen.queryByTestId('bulk-actions')).not.toBeInTheDocument();
+
+    // Click the first row checkbox (Select row)
+    const checkboxes = screen.getAllByRole('checkbox', { name: /select row/i });
+    await user.click(checkboxes[0]);
+
+    // Bulk actions bar should now appear
+    await waitFor(() => {
+      expect(screen.getByTestId('bulk-actions')).toBeInTheDocument();
+    });
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
+  });
+
+  it('shows filtered empty state with clear button when filters match nothing', async () => {
+    server.use(
+      http.get('/api/content', () => {
+        return HttpResponse.json({ items: [], total: 0 });
+      }),
+      http.get('/api/clones', () => {
+        return HttpResponse.json({
+          items: [buildClone({ id: 'clone-1', name: 'Marketing Voice' })],
+          total: 1,
+        });
+      })
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/library" element={<LibraryPage />} />
+      </Routes>,
+      { initialEntries: ['/library?status=review'] }
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/no results match filters/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /clear filters/i })).toBeInTheDocument();
   });
 });
